@@ -1,4 +1,5 @@
 #include "Board.h"
+#include "Move.h"
 #include <iostream>
 
 Board::Board() {

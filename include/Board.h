@@ -2,8 +2,10 @@
 #define BOARD_H
 
 #include "Piece.h"
+#include "Move.h"
 #include <array>
 #include <string>
+#include <vector>
 
 // Represents a square on the board (0-7 for both row and column)
 struct Square {
@@ -43,6 +45,19 @@ struct Square {
     }
 };
 
+struct GameState {
+    Color sideToMove = Color::WHITE;
+    bool whiteCanCastleKingsside = true;
+    bool whiteCanCastleQueensside = true;
+    bool blackCanCastleKingsside = true;
+    bool blackCanCastleQueensside = true;
+    Square enPassantTarget;   // invalid square = no en passant
+    int halfmoveClock = 0;    // For 50-move rule
+    int fullmoveNumber = 1;   // Starts at 1, increments after Black moves
+};
+
+struct Move; //Forward decl to avoid circular include
+
 class Board {
 public:
     Board();
@@ -62,8 +77,20 @@ public:
     //Find king of given color
     Square findKing(Color color) const;
 
+    //Game state
+    GameState state;
+
+    // Make and undo moves
+    void makeMove(Move& move);
+    void undoMove(const Move& move);
+
+    //Attack detection
+    bool isSquareAttacked(const Square& sq, Color byColor) const;
+    bool isInCheck(Color color) const;
+
 private:
     std::array<std::array<Piece, 8>, 8> squares;
+    std::vector<GameState> stateHistory;
 };
 
 #endif // BOARD_H
