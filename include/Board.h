@@ -2,7 +2,6 @@
 #define BOARD_H
 
 #include "Piece.h"
-#include "Move.h"
 #include <array>
 #include <string>
 #include <vector>
