@@ -370,6 +370,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClCompile Include="E:\Chess\src\main.cpp" />
     <ClCompile Include="E:\Chess\src\Board.cpp" />
+    <ClCompile Include="E:\Chess\src\Game.cpp" />
+    <ClCompile Include="E:\Chess\src\MoveGenerator.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

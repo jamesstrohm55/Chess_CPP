@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Piece.h"
 #include "Board.h"
+#include "Game.h"
 
 int main() {
     std::cout << "=== Chess Program ===\n";
@@ -18,6 +19,10 @@ int main() {
     // Test getting a piece
     Piece p = board.getPiece(Square::fromAlgebraic("e1"));
     std::cout << "Piece at e1: " << pieceToChar(p) << "\n";
+
+    // Start game loop
+    Game game;
+    game.run();
 
     return 0;
 }
