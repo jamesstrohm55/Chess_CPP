@@ -8,6 +8,9 @@
       <FullPath>E:\Chess\build\Debug\Chess.exe</FullPath>
     </ProjectOutput>
     <ProjectOutput>
+      <FullPath>E:\Chess\build\Debug\ChessGUI.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
       <FullPath>E:\Chess\build\x64\Debug\ALL_BUILD</FullPath>
     </ProjectOutput>
   </ProjectOutputs>

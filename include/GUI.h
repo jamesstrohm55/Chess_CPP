@@ -13,7 +13,7 @@ public:
     ~ChessGUI();
 
     bool init(int windowSize = 640);
-    void run():
+    void run();
     void shutdown();
 
 private:
@@ -34,7 +34,7 @@ private:
 
     //Promotion UI
     bool awaitingPromotion = false;
-    Move pendingPRomotionMove;
+    Move pendingPromotionMove;
 
     //Rendering
     void render();

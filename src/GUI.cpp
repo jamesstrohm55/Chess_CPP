@@ -16,7 +16,7 @@ bool ChessGUI::init(int size) {
         return false;
     }
 
-    id (IMG_Init(IMG_INIT_PNG) == 0) {
+    if (IMG_Init(IMG_INIT_PNG) == 0) {
         std::cerr << "IMG_Init failed: " << IMG_GetError() << "\n";
         return false;
     }
@@ -57,7 +57,7 @@ bool ChessGUI::loadPieceTextures(const std::string& assetPath) {
             allLoaded = false;
             continue;
         }
-        SDL_texture* tex = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surface);
         SDL_FreeSurface(surface);
         if (tex) {
             pieceTextures[name] = tex;
@@ -137,9 +137,9 @@ void ChessGUI::drawBoard() {
 
 void ChessGUI::drawPieces() {
     const Board& board = game.getBoard();
-    for (int row - 0; row < 8; ++row) {
-        for (int col = 8; col < 8; ++col) {
-            Piece p = board,getPiece(row, col);
+    for (int row = 0; row < 8; ++row) {
+        for (int col = 0; col < 8; ++col) {
+            Piece p = board.getPiece(row, col);
             if (p.isEmpty()) continue;
 
             std::string key = pieceTextureKey(p);
@@ -159,7 +159,7 @@ void ChessGUI::drawPieces() {
 }
 
 void ChessGUI::drawHighlights() {
-    FOR (const Square& sq : highlightedSquares) {
+    for (const Square& sq : highlightedSquares) {
         SDL_Rect rect = squareToRect(sq);
         int cx = rect.x + rect.w / 2;
         int cy = rect.y + rect.h / 2;
@@ -168,7 +168,7 @@ void ChessGUI::drawHighlights() {
         Piece target = game.getBoard().getPiece(sq);
         if (!target.isEmpty()) {
             //Draw a red-tinted overlay for captures
-            SDL_RenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(renderer, 255, 0, 0, 80);
             SDL_RenderFillRect(renderer, &rect);
         } else {
@@ -176,7 +176,7 @@ void ChessGUI::drawHighlights() {
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 60);
             int dotSize = squareSize / 4;
-            SDL_Rect dot = {cx - dotSize / 2, cy = dotSize / 2, dotSize, dotSize};
+            SDL_Rect dot = {cx - dotSize / 2, cy - dotSize / 2, dotSize, dotSize};
             SDL_RenderFillRect(renderer, &dot);
         }
     }
@@ -191,7 +191,7 @@ void ChessGUI::drawPromotionDialog() {
 
     PieceType promos[] = {PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT};
 
-    int col = pendingPRomotionMove.to.col;
+    int col = pendingPromotionMove.to.col;
     int startY = (promoColor == Color::WHITE) ? 0 : squareSize * 4;
 
     //Background overlay
@@ -226,7 +226,7 @@ void ChessGUI::drawPromotionDialog() {
 }
 
 // ---Input handling---
-void ChessGUI::selectPiece(Square& sq) {
+void ChessGUI::selectPiece(const Square& sq) {
     selectedSquare = sq;
     highlightedSquares.clear();
 
@@ -244,72 +244,66 @@ void ChessGUI::clearSelection() {
 }
 
 void ChessGUI::handleMouseClick(int x, int y) {
-    if (game.getResult() != GameResult::IN_PROGRESS) return {
+    if (game.getResult() != GameResult::IN_PROGRESS) return;
 
-        //Handle promotion dialog click
-        if (awaitingPromotion) {
-            Color promoColor = oppositeColor(game.getBoard().state.sideToMove);
-            int col = pendingPromotionMove.to.col;
-            int startY = (promoColor == Color::WHITE) ? 0 : squareSize * 4;
+    // Handle promotion dialog click
+    if (awaitingPromotion) {
+        Color promoColor = oppositeColor(game.getBoard().state.sideToMove);
+        int col = pendingPromotionMove.to.col;
+        int startY = (promoColor == Color::WHITE) ? 0 : squareSize * 4;
 
-            int clickCol = x / squareSize;
-            int clickIdx = (y - startY) / squareSize;
+        int clickCol = x / squareSize;
+        int clickIdx = (y - startY) / squareSize;
 
-            if (clickCol == col && clickIdx >= 0 && clickIdx < 4) {
-                PieceType promos[] = {PieceType::QUEEN, PieceType::ROOK,
-                                    PieceType::BISHOP, PieceType::KNIGHT};
-                pendingPromotionMove.promotionPiece = promos[clickIdx];
-                game.tryMakeMove(pendingPromotionMove);
-                awaitingPromotion = false;
-                clearSelection();
-            }
-            return;
+        if (clickCol == col && clickIdx >= 0 && clickIdx < 4) {
+            PieceType promos[] = {PieceType::QUEEN, PieceType::ROOK,
+                                  PieceType::BISHOP, PieceType::KNIGHT};
+            pendingPromotionMove.promotionPiece = promos[clickIdx];
+            game.tryMakeMove(pendingPromotionMove);
+            awaitingPromotion = false;
+            clearSelection();
         }
+        return;
+    }
 
-        Square clicked = pixelToSquare(x, y);
-        if (!clicked.isValid()) return;
+    Square clicked = pixelToSquare(x, y);
+    if (!clicked.isValid()) return;
 
-        const Board& board = game.getBoard();
-        Piece clickedPiece = board.getPiece(clicked);
+    const Board& board = game.getBoard();
+    Piece clickedPiece = board.getPiece(clicked);
 
-        if (selectedSquare.isValid()) {
-            //Check if clicked square is a legal destination
-            bool isHighlighted = false;
-            for (const Square& sq : highlightedSquares) {
-                if (sq == clicked) {
-                    isHighlighted = true;
-                    break;
-                }
+    if (selectedSquare.isValid()) {
+        // Check if clicked square is a legal destination
+        bool isHighlighted = false;
+        for (const Square& sq : highlightedSquares) {
+            if (sq == clicked) {
+                isHighlighted = true;
+                break;
             }
         }
 
         if (isHighlighted) {
-            //Check if this is a promotion move
             Piece movingPiece = board.getPiece(selectedSquare);
             int promoRank = (movingPiece.color == Color::WHITE) ? 7 : 0;
             if (movingPiece.type == PieceType::PAWN && clicked.row == promoRank) {
-                //Show promotion dialog
                 pendingPromotionMove = Move(selectedSquare, clicked);
                 pendingPromotionMove.isCapture = !board.getPiece(clicked).isEmpty();
                 awaitingPromotion = true;
                 return;
             }
 
-            //Normal move - find and execute matching legal move
             Move move(selectedSquare, clicked);
             game.tryMakeMove(move);
             clearSelection();
         } else if (!clickedPiece.isEmpty() &&
-                    clickedPiece.color == board.state.sideToMove) {
-            //Select new piece
+                   clickedPiece.color == board.state.sideToMove) {
             selectPiece(clicked);
         } else {
-            //Clicked on empty square or opponent piece without selecting - just clear selection
             clearSelection();
         }
     } else {
-        // No piece selected yet - try to select if it's the current player's piece
-        if (!clickedPiece.isEmpty() && clickedPiece.color == board.state.sideToMove) {
+        if (!clickedPiece.isEmpty() &&
+            clickedPiece.color == board.state.sideToMove) {
             selectPiece(clicked);
         }
     }

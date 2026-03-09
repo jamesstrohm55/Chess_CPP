@@ -1,28 +1,42 @@
-#include <iostream>
-#include "Piece.h"
-#include "Board.h"
 #include "Game.h"
+#include <iostream>
+#include <string>
 
-int main() {
-    std::cout << "=== Chess Program ===\n";
+#ifdef HAS_GUI
+#include "GUI.h"
+#endif
 
-    Board board;
-    board.print();
+int main(int argc, char *argv[])
+{
+    bool guiMode = false;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--gui")
+            guiMode = true;
+    }
 
-    // Test finding kings
-    Square whiteKing = board.findKing(Color::WHITE);
-    Square blackKing = board.findKing(Color::BLACK);
-
-    std::cout << "White king at: " << whiteKing.toAlgebraic() << "\n";
-    std::cout << "Black king at: " << blackKing.toAlgebraic() << "\n";
-
-    // Test getting a piece
-    Piece p = board.getPiece(Square::fromAlgebraic("e1"));
-    std::cout << "Piece at e1: " << pieceToChar(p) << "\n";
-
-    // Start game loop
     Game game;
-    game.run();
+
+    if (guiMode)
+    {
+#ifdef HAS_GUI
+        ChessGUI gui(game);
+        if (!gui.init(640))
+        {
+            std::cerr << "Failed to initialize GUI.\n";
+            return 1;
+        }
+        gui.run();
+        gui.shutdown();
+#else
+        std::cerr << "GUI not available (SDL2 not found at build time).\n";
+        return 1;
+#endif
+    }
+    else
+    {
+        game.run();
+    }
 
     return 0;
 }
