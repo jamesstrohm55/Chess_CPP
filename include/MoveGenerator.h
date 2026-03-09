@@ -14,7 +14,7 @@ class MoveGenerator {
         std::vector<Move> generatePseudoLegalMoves(Board& board) const;
 
         //Game ending queries
-        bool isCheekmate(Board& board) const;
+        bool isCheckmate(Board& board) const;
         bool isStalemate(Board& board) const;
         bool isDraw(const Board& board) const; //50 move rule or insufficient material
 

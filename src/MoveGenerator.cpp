@@ -2,10 +2,10 @@
 
 // --- Pseudo-legal generation: scan all friendly pieces ---
 
-std::vector<Move> MoveGenerator::generatePseudoLegalMoves(const Board& board) const {
+std::vector<Move> MoveGenerator::generatePseudoLegalMoves(Board& board) const {
     std::vector<Move> moves;
     moves.reserve(64);
-    Color side = board.state.sideToMove; {
+    Color side = board.state.sideToMove; 
         for (int row = 0; row < 8; ++row) {
             for (int col = 0; col < 8; ++col) {
                 Piece p = board.getPiece(row, col);
@@ -136,7 +136,7 @@ void MoveGenerator::generateKnightMoves(const Board & board, const Square& from,
         {1,-2}, {1,2}, {2,-1}, {2,1}
     };
 
-    for (auto& off : offsets) {
+    for (auto& off : knightMoves) {
         Square to(from.row + off[0], from.col + off[1]);
         if (!to.isValid()) continue;
 
@@ -199,3 +199,93 @@ void MoveGenerator::generateKingMoves(const Board& board, const Square& from,
 }
 
 // --- Castling moves ---
+void MoveGenerator::generateCastlingMoves(const Board& board, Color color,
+                                            std::vector<Move>& moves) const {
+    // Cannot castle out of check
+    if (board.isInCheck(color)) return;
+
+    int row = (color == Color::WHITE) ? 0 : 7;
+    Color enemy = oppositeColor(color);
+
+    bool canKingside = (color == Color::WHITE)
+        ? board.state.whiteCanCastleKingsside
+        : board.state.blackCanCastleKingsside;
+    
+    bool canQueenside = (color == Color::WHITE)
+        ? board.state.whiteCanCastleQueensside
+        : board.state.blackCanCastleQueensside;
+
+    // Kingside: king e -> g, square f and g must be empty and not attacked
+    if (canKingside) {
+        if (board.getPiece(row, 5).isEmpty() &&
+            board.getPiece(row, 6).isEmpty() &&
+            !board.isSquareAttacked(Square(row, 5), enemy) &&
+            !board.isSquareAttacked(Square(row, 6), enemy)) {
+            Move m(Square(row, 4), Square(row, 6));
+            m.isCastling = true;
+            moves.push_back(m);
+        }
+    }
+
+    if (canQueenside) {
+        if (board.getPiece(row, 1).isEmpty() &&
+            board.getPiece(row, 2).isEmpty() &&
+            board.getPiece(row, 3).isEmpty() &&
+            !board.isSquareAttacked(Square(row, 2), enemy) &&
+            !board.isSquareAttacked(Square(row, 3), enemy)) {
+            Move m(Square(row, 4), Square(row, 2));
+            m.isCastling = true;
+            moves.push_back(m);
+        }
+    }
+}
+
+// --- Game ending queries ---
+bool MoveGenerator::isCheckmate(Board& board) const {
+    return board.isInCheck(board.state.sideToMove) &&
+            generateLegalMoves(board).empty();
+}
+
+bool MoveGenerator::isStalemate(Board& board) const{
+    return !board.isInCheck(board.state.sideToMove) &&
+            generateLegalMoves(board).empty();   
+}
+
+bool MoveGenerator::isDraw(const Board& board) const {
+    //50 move rule
+    if (board.state.halfmoveClock >= 100) return true;
+
+    //Insufficient material: count all pieces
+    int whiteKnights = 0, whiteBishops = 0, whiteOther = 0;
+    int blackKnights = 0, blackBishops = 0, blackOther = 0;
+
+    for (int r = 0; r < 8; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            Piece p = board.getPiece(r, c);
+            if (p.isEmpty() || p.type == PieceType::KING) continue;
+            if (p.color == Color::WHITE) {
+                if (p.type == PieceType::KNIGHT) whiteKnights++;
+                else if (p.type == PieceType::BISHOP) whiteBishops++;
+                else whiteOther++;
+            } else {
+                if (p.type == PieceType::KNIGHT) blackKnights++;
+                else if (p.type == PieceType::BISHOP) blackBishops++;
+                else blackOther++;
+            }
+        }
+    }
+
+    //If either side has, pawns, rooks, or queens, not sufficient
+    if (whiteOther > 0 || blackOther > 0) return false;
+
+    int whiteMinor = whiteKnights + whiteBishops;
+    int blackMinor = blackKnights + blackBishops;
+
+    // K vs K
+    if (whiteMinor == 0 && blackMinor == 0) return true;
+    // K+minor vs K
+    if (whiteMinor <= 1 && blackMinor == 0) return true;
+    if (blackMinor <= 1 && whiteMinor == 0) return true;
+
+    return false;
+}
