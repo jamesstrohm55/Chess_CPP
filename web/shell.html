@@ -97,7 +97,13 @@
 
     <script>
         var Module = {
-            canvas: (function() { return document.getElementById('canvas'); })(),
+            canvas: (function() {
+                var c = document.getElementById('canvas');
+                // Force 1:1 CSS-to-pixel mapping so SDL coordinates match clicks
+                c.style.width = c.width + 'px';
+                c.style.height = c.height + 'px';
+                return c;
+            })(),
             setStatus: function(text) {
                 var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
                 var progress = document.getElementById('progress-fill');
