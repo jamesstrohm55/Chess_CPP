@@ -18,6 +18,9 @@ class MoveGenerator {
         bool isStalemate(Board& board) const;
         bool isDraw(const Board& board) const; //50 move rule or insufficient material
 
+        //Generate only legal captures and promotions (for quiescence search)
+        std::vector<Move> generateLegalCaptures(Board& board) const;
+
     private:
         void generatePawnMoves(const Board& board, const Square& from, Color color,
                                 std::vector<Move>& moves) const;

@@ -105,7 +105,7 @@ bool Board::isSquareAttacked(const Square& sq, Color byColor) const {
     }
 
     //check pawn attacks
-    int pawnDir = (byColor == Color::WHITE) ? -1 : 1;
+    int pawnDir = (byColor == Color::WHITE) ? 1 : -1;
     // Pawns of bycolor attack FROM pawnDir rows away
     //If byColor is WHITE, white pawns sit below and attack upwards
     //If byColor is BLACK, black pawns sit above and attack downwards

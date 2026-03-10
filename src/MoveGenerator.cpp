@@ -240,6 +240,20 @@ void MoveGenerator::generateCastlingMoves(const Board& board, Color color,
     }
 }
 
+// --- Legal captures only (for quiescence search) ---
+
+std::vector<Move> MoveGenerator::generateLegalCaptures(Board& board) const {
+    std::vector<Move> allLegal = generateLegalMoves(board);
+    std::vector<Move> captures;
+    captures.reserve(allLegal.size());
+    for (auto& m : allLegal) {
+        if (m.isCapture || m.isPromotion()) {
+            captures.push_back(m);
+        }
+    }
+    return captures;
+}
+
 // --- Game ending queries ---
 bool MoveGenerator::isCheckmate(Board& board) const {
     return board.isInCheck(board.state.sideToMove) &&
