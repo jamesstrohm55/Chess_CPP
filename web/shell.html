@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+        #canvas-container {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        canvas.emscripten {
+            display: block;
+            border: none;
+            outline: none;
+        }
+        /* Loading overlay */
+        #loading {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #loading p {
+            font-size: 1rem;
+            margin-bottom: 16px;
+            color: #aaa;
+        }
+        #progress-bar {
+            width: 240px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        #progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4a90d9, #67b8f7);
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+        .footer {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .footer a {
+            color: #4a90d9;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chess Engine</h1>
+    <div id="canvas-container">
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"
+                width="640" height="700"></canvas>
+        <div id="loading">
+            <p>Loading...</p>
+            <div id="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+    <p class="footer">Built with C++17, SDL2 &amp; Emscripten &mdash; <a href="https://github.com/jstrohm21" target="_blank">James Strohm</a></p>
+
+    <script>
+        var Module = {
+            canvas: (function() { return document.getElementById('canvas'); })(),
+            setStatus: function(text) {
+                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+                var progress = document.getElementById('progress-fill');
+                var loading = document.getElementById('loading');
+                if (m) {
+                    var pct = (parseInt(m[2]) / parseInt(m[4])) * 100;
+                    progress.style.width = pct + '%';
+                } else if (text === '') {
+                    loading.classList.add('hidden');
+                }
+            },
+            onRuntimeInitialized: function() {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        };
+    </script>
+    {{{ SCRIPT }}}
+</body>
+</html>

@@ -8,12 +8,16 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef __EMSCRIPTEN__
+    bool guiMode = true;
+#else
     bool guiMode = false;
     for (int i = 1; i < argc; ++i)
     {
         if (std::string(argv[i]) == "--gui")
             guiMode = true;
     }
+#endif
 
     Game game;
 

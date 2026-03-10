@@ -8,6 +8,10 @@
 #include <string>
 #include <unordered_map>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 enum class GUIState
 {
     MENU_MODE,
@@ -85,6 +89,15 @@ private:
     std::string statusMessage;
     int panelHeight = 60;
     void drawStatusPanel();
+    SDL_Rect undoButtonRect = {0, 0, 0, 0};
+    void handleUndoClick();
+
+    // Main loop
+    bool running = true;
+    void runOneFrame();
+#ifdef __EMSCRIPTEN__
+    static void mainLoopCallback(void *arg);
+#endif
 };
 
 #endif // GUI_H

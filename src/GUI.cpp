@@ -1,6 +1,10 @@
 #include "GUI.h"
 #include <iostream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 ChessGUI::ChessGUI(Game &game) : game(game) {}
 
 ChessGUI::~ChessGUI()
@@ -53,13 +57,20 @@ bool ChessGUI::init(int size)
         std::cerr << "Failed to load piece textures\n";
     }
 
-    font = TTF_OpenFont("C:/Windows/Fonts/segoeui.ttf", 24);
-    titleFont = TTF_OpenFont("C:/Windows/Fonts/segoeuib.ttf", 48);
+    font = TTF_OpenFont("assets/fonts/OpenSans-Regular.ttf", 24);
+    titleFont = TTF_OpenFont("assets/fonts/OpenSans-Bold.ttf", 48);
+#ifndef __EMSCRIPTEN__
+    if (!font || !titleFont)
+    {
+        font = TTF_OpenFont("C:/Windows/Fonts/segoeui.ttf", 24);
+        titleFont = TTF_OpenFont("C:/Windows/Fonts/segoeuib.ttf", 48);
+    }
     if (!font || !titleFont)
     {
         font = TTF_OpenFont("C:/Windows/Fonts/arial.ttf", 24);
         titleFont = TTF_OpenFont("C:/Windows/Fonts/arialbd.ttf", 48);
     }
+#endif
     if (!font)
     {
         std::cerr << "Failed to load font\n";
@@ -78,7 +89,7 @@ bool ChessGUI::loadPieceTextures(const std::string &assetPath)
 
     for (const char *name : pieces)
     {
-        std::string path = assetPath + name + ".svg";
+        std::string path = assetPath + name + ".png";
         SDL_Surface *surface = IMG_Load(path.c_str());
         if (!surface)
         {
@@ -296,6 +307,18 @@ void ChessGUI::drawStatusPanel()
     {
         drawTextCentered(statusMessage, windowSize / 2, windowSize + 42, white, font);
     }
+
+    // Undo button
+    if (game.getResult() == GameResult::IN_PROGRESS)
+    {
+        undoButtonRect = {windowSize - 70, windowSize + 5, 60, 24};
+        SDL_SetRenderDrawColor(renderer, 80, 70, 65, 255);
+        SDL_RenderFillRect(renderer, &undoButtonRect);
+        SDL_SetRenderDrawColor(renderer, 140, 110, 80, 255);
+        SDL_RenderDrawRect(renderer, &undoButtonRect);
+        drawTextCentered("Undo", undoButtonRect.x + undoButtonRect.w / 2,
+                         undoButtonRect.y + undoButtonRect.h / 2, white, font);
+    }
 }
 
 void ChessGUI::drawPromotionDialog()
@@ -463,74 +486,109 @@ void ChessGUI::handleMouseClick(int x, int y)
     }
 }
 
-// ---Main loop---
-void ChessGUI::run()
+void ChessGUI::handleUndoClick()
 {
-    bool running = true;
-    while (running)
+    if (game.undoLastMove())
     {
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            switch (event.type)
-            {
-            case SDL_QUIT:
-                running = false;
-                break;
-            case SDL_MOUSEBUTTONDOWN:
-                if (event.button.button == SDL_BUTTON_LEFT)
-                {
-                    if (guiState == GUIState::PLAYING)
-                    {
-                        if (game.getResult() != GameResult::IN_PROGRESS)
-                        {
-                            handleGameOverClick(event.button.x, event.button.y);
-                        }
-                        else
-                        {
-                            handleMouseClick(event.button.x, event.button.y);
-                        }
-                    }
-                    else
-                    {
-                        handleMenuClick(event.button.x, event.button.y);
-                    }
-                }
-            }
-        }
-
-        if (guiState == GUIState::PLAYING)
-        {
-            if (game.isCPUTurn())
-            {
-                statusMessage = "CPU is thinking...";
-                render();
-                game.handleCPUTurn();
-                std::string lastMove = game.getLastMoveString();
-                if (game.getResult() != GameResult::IN_PROGRESS)
-                {
-                    if (game.getResult() == GameResult::WHITE_WINS || game.getResult() == GameResult::BLACK_WINS)
-                        statusMessage = "CPU played: " + lastMove + ". Checkmate!";
-                    else
-                        statusMessage = "CPU played: " + lastMove + ". It's a draw!";
-                }
-                else if (game.isInCheck())
-                {
-                    statusMessage = "CPU played: " + lastMove + ". Check!";
-                }
-                else if (!lastMove.empty())
-                {
-                    statusMessage = "CPU played: " + lastMove + ". Your turn.";
-                }
-            }
-            render();
-        }
-        else
-        {
-            renderMenu();
-        }
+        clearSelection();
+        awaitingPromotion = false;
+        statusMessage = "Move undone. Your turn.";
     }
 }
+
+// ---Main loop---
+void ChessGUI::runOneFrame()
+{
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        switch (event.type)
+        {
+        case SDL_QUIT:
+            running = false;
+#ifdef __EMSCRIPTEN__
+            emscripten_cancel_main_loop();
+#endif
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            if (event.button.button == SDL_BUTTON_LEFT)
+            {
+                if (guiState == GUIState::PLAYING)
+                {
+                    // Check undo button first
+                    if (game.getResult() == GameResult::IN_PROGRESS &&
+                        isInsideRect(event.button.x, event.button.y, undoButtonRect))
+                    {
+                        handleUndoClick();
+                    }
+                    else if (game.getResult() != GameResult::IN_PROGRESS)
+                    {
+                        handleGameOverClick(event.button.x, event.button.y);
+                    }
+                    else
+                    {
+                        handleMouseClick(event.button.x, event.button.y);
+                    }
+                }
+                else
+                {
+                    handleMenuClick(event.button.x, event.button.y);
+                }
+            }
+        }
+    }
+
+    if (guiState == GUIState::PLAYING)
+    {
+        if (game.isCPUTurn())
+        {
+            statusMessage = "CPU is thinking...";
+            render();
+            game.handleCPUTurn();
+            std::string lastMove = game.getLastMoveString();
+            if (game.getResult() != GameResult::IN_PROGRESS)
+            {
+                if (game.getResult() == GameResult::WHITE_WINS || game.getResult() == GameResult::BLACK_WINS)
+                    statusMessage = "CPU played: " + lastMove + ". Checkmate!";
+                else
+                    statusMessage = "CPU played: " + lastMove + ". It's a draw!";
+            }
+            else if (game.isInCheck())
+            {
+                statusMessage = "CPU played: " + lastMove + ". Check!";
+            }
+            else if (!lastMove.empty())
+            {
+                statusMessage = "CPU played: " + lastMove + ". Your turn.";
+            }
+        }
+        render();
+    }
+    else
+    {
+        renderMenu();
+    }
+}
+
+void ChessGUI::run()
+{
+    running = true;
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop_arg(mainLoopCallback, this, 0, 1);
+#else
+    while (running)
+    {
+        runOneFrame();
+    }
+#endif
+}
+
+#ifdef __EMSCRIPTEN__
+void ChessGUI::mainLoopCallback(void *arg)
+{
+    static_cast<ChessGUI *>(arg)->runOneFrame();
+}
+#endif
 
 void ChessGUI::shutdown()
 {

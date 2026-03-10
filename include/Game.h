@@ -66,6 +66,9 @@ public:
     int getBlackWins() const { return blackWins; }
     int getDrawCount() const { return drawCount; }
 
+    //Undo last move (in CPU mode, undoes both CPU + player move)
+    bool undoLastMove();
+
     //Cpu turn helpers
     bool isCPUTurn() const;
     std::string getLastMoveString() const;

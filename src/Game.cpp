@@ -51,6 +51,27 @@ void Game::resetGame()
     updateLegalMoves();
 }
 
+bool Game::undoLastMove()
+{
+    if (moveHistory.empty())
+        return false;
+
+    // Undo last move
+    board.undoMove(moveHistory.back());
+    moveHistory.pop_back();
+
+    // In CPU mode, also undo the CPU's move so it's the player's turn again
+    if (mode == GameMode::HUMAN_VS_CPU && !moveHistory.empty())
+    {
+        board.undoMove(moveHistory.back());
+        moveHistory.pop_back();
+    }
+
+    result = GameResult::IN_PROGRESS;
+    updateLegalMoves();
+    return true;
+}
+
 bool Game::tryMakeMove(const Move &move)
 {
     // Find matching move in legal moves
