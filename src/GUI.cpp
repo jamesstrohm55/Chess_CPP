@@ -25,6 +25,12 @@ bool ChessGUI::init(int size)
         return false;
     }
 
+    if (TTF_Init() < 0)
+    {
+        std::cerr << "TTF_Init failed: " << TTF_GetError() << "\n";
+        return false;
+    }
+
     window = SDL_CreateWindow("Chess",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               windowSize, windowSize, SDL_WINDOW_SHOWN);
@@ -45,6 +51,19 @@ bool ChessGUI::init(int size)
     if (!loadPieceTextures("assets/pieces/"))
     {
         std::cerr << "Failed to load piece textures\n";
+    }
+
+    font = TTF_OpenFont("C:/Windows/Fonts/segoeui.ttf", 24);
+    titleFont = TTF_OpenFont("C:/Windows/Fonts/segoeuib.ttf", 48);
+    if (!font || !titleFont)
+    {
+        font = TTF_OpenFont("C:/Windows/Fonts/arial.ttf", 24);
+        titleFont = TTF_OpenFont("C:/Windows/Fonts/arialbd.ttf", 48);
+    }
+    if (!font)
+    {
+        std::cerr << "Failed to load font\n";
+        return false;
     }
 
     return true;
@@ -398,16 +417,28 @@ void ChessGUI::run()
             case SDL_MOUSEBUTTONDOWN:
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    handleMouseClick(event.button.x, event.button.y);
+                    if (guiState == GUIState::PLAYING)
+                    {
+                        handleMouseClick(event.button.x, event.button.y);
+                    }
+                    else
+                    {
+                        handleMenuClick(event.button.x, event.button.y);
+                    }
                 }
                 break;
             }
         }
 
-        // Let the Game handle CPU moves if needed
-        game.handleCPUTurn();
-
-        render();
+        if (guiState == GUIState::PLAYING)
+        {
+            game.handleCPUTurn();
+            render();
+        }
+        else
+        {
+            renderMenu();
+        }
     }
 }
 
@@ -430,6 +461,192 @@ void ChessGUI::shutdown()
         SDL_DestroyWindow(window);
         window = nullptr;
     }
+
+    if (font)
+    {
+        TTF_CloseFont(font);
+        font = nullptr;
+    }
+
+    if (titleFont)
+    {
+        TTF_CloseFont(titleFont);
+        titleFont = nullptr;
+    }
+
+    TTF_Quit();
     IMG_Quit();
     SDL_Quit();
+}
+
+void ChessGUI::drawTextCentered(const std::string & text, int centerX, int centerY, SDL_Color color, TTF_Font *f)
+{
+    SDL_Surface *surface = TTF_RenderText_Blended(f, text.c_str(), color);
+    if (!surface)
+        return;
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect rect = {centerX - surface->w / 2, centerY - surface->h /2,
+                     surface->w, surface->h};
+    SDL_FreeSurface(surface);
+    if (texture)
+    {
+        SDL_RenderCopy(renderer, texture, nullptr, &rect);
+        SDL_DestroyTexture(texture);
+    }
+}
+
+bool ChessGUI::isInsideRect(int x, int y, const SDL_Rect &rect) const
+{
+    return x >= rect.x && x <= rect.x + rect.w &&
+           y >= rect.y && y <= rect.y + rect.h;
+}
+
+void ChessGUI::renderMenu()
+{
+    SDL_SetRenderDrawColor(renderer, 48, 44, 40, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gold = {255, 215, 0, 255};
+
+    int btnW = 300, btnH = 60;
+    int btnX = (windowSize - btnW) / 2;
+
+    switch (guiState)
+    {
+    case GUIState::MENU_MODE:
+    {
+        drawTextCentered("CHESS", windowSize /2, 140, gold, titleFont);
+
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+
+        SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
+
+        SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
+
+        drawTextCentered("Play vs Human", windowSize / 2, btn1.y + btnH /2, white, font);
+        drawTextCentered("Play vs Computer", windowSize / 2, btn2.y + btnH /2, white, font);
+        break;
+    }
+    case GUIState::MENU_COLOR:
+    {
+        drawTextCentered("Play as ...", windowSize / 2, 140, gold, titleFont);
+
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
+
+        SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
+
+        SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
+
+        drawTextCentered("White", windowSize / 2, btn1.y + btnH / 2, white, font);
+        drawTextCentered("Black", windowSize / 2, btn2.y + btnH / 2, white, font);
+        break;
+    }
+    case GUIState::MENU_DIFFICULTY:
+    {
+        drawTextCentered("Select Difficulty", windowSize / 2, 140, gold, titleFont);
+
+        SDL_Rect btn1 = {btnX, 240, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+        SDL_Rect btn3 = {btnX, 420, btnW, btnH};
+
+        SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
+        SDL_RenderFillRect(renderer, &btn3);
+
+        SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
+        SDL_RenderDrawRect(renderer, &btn3);
+
+        drawTextCentered("Easy", windowSize / 2, btn1.y + btnH / 2, white, font);
+        drawTextCentered("Medium", windowSize / 2, btn2.y + btnH / 2, white, font);
+        drawTextCentered("Hard", windowSize / 2, btn3.y + btnH / 2, white, font);
+        break;
+    }
+    default:
+        break;
+    }
+
+    SDL_RenderPresent(renderer);
+}
+
+void ChessGUI::handleMenuClick(int x, int y)
+{
+    int btnW = 300, btnH = 60;
+    int btnX = (windowSize - btnW) / 2;
+
+    switch (guiState)
+    {
+    case GUIState::MENU_MODE:
+    {
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setMode(GameMode::HUMAN_VS_HUMAN);
+            guiState = GUIState::PLAYING;
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setMode(GameMode::HUMAN_VS_CPU);
+            guiState = GUIState::MENU_COLOR;
+        }
+        break;
+    }
+    case GUIState::MENU_COLOR:
+    {
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setCPUColor(Color::BLACK);
+            guiState = GUIState::MENU_DIFFICULTY;
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setCPUColor(Color::WHITE);
+            guiState = GUIState::MENU_DIFFICULTY;
+        }
+        break;
+    }
+    case GUIState::MENU_DIFFICULTY:
+    {
+        SDL_Rect btn1 = {btnX, 240, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+        SDL_Rect btn3 = {btnX, 420, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setDifficulty(Difficulty::EASY);
+            guiState = GUIState::PLAYING;
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setDifficulty(Difficulty::MEDIUM);
+            guiState = GUIState::PLAYING;
+        }
+        else if (isInsideRect(x, y, btn3))
+        {
+            game.setDifficulty(Difficulty::HARD);
+            guiState = GUIState::PLAYING;
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
