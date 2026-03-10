@@ -12,7 +12,7 @@ A fully playable chess engine with both a console interface and an SDL2 graphica
   - **Medium** — Depth 4 search (casual play)
   - **Hard** — Depth 6 search (challenging)
 - **Console Interface** — Interactive text-based game supporting both UCI (`e2e4`) and algebraic (`Nf3`, `O-O`) notation
-- **Graphical GUI** — SDL2-based board with click-to-move interaction, move highlighting, and a promotion dialog
+- **Graphical GUI** — SDL2-based board with click-to-move interaction, move highlighting, promotion dialog, and in-app menu
 - **Draw Detection** — 50-move rule and insufficient material (K vs K, K+B vs K, K+N vs K)
 
 ## Architecture
@@ -66,7 +66,7 @@ cmake --build . --config Debug
 
 ```bash
 # Install dependencies
-vcpkg install sdl2 sdl2-image --triplet=x64-windows
+vcpkg install sdl2 sdl2-image sdl2-ttf --triplet=x64-windows
 
 # Build
 mkdir build && cd build
@@ -88,6 +88,8 @@ On startup, a menu lets you choose:
 1. **Human vs Human** or **Human vs CPU**
 2. Play as **White** or **Black**
 3. Difficulty: **Easy**, **Medium**, or **Hard**
+
+In GUI mode, the menu is displayed as clickable buttons in the application window. In console mode, the menu is text-based.
 
 ## Console Commands
 
