@@ -4,12 +4,22 @@
 #include "Game.h"
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <string>
 #include <unordered_map>
 
-class ChessGUI {
+enum class GUIState
+{
+    MENU_MODE,
+    MENU_COLOR,
+    MENU_DIFFICULTY,
+    PLAYING
+};
+
+class ChessGUI
+{
 public:
-    ChessGUI(Game& game);
+    ChessGUI(Game &game);
     ~ChessGUI();
 
     bool init(int windowSize = 640);
@@ -17,43 +27,55 @@ public:
     void shutdown();
 
 private:
-    Game& game;
+    Game &game;
 
-    SDL_Window* window = nullptr;
-    SDL_Renderer* renderer = nullptr;
+    SDL_Window *window = nullptr;
+    SDL_Renderer *renderer = nullptr;
 
     int windowSize;
     int squareSize;
 
-    //Piece textures keyed by "wP", "bK", etc.
-    std::unordered_map<std::string, SDL_Texture*> pieceTextures;
+    // Piece textures keyed by "wP", "bK", etc.
+    std::unordered_map<std::string, SDL_Texture *> pieceTextures;
 
-    //interaction state
+    // interaction state
     Square selectedSquare;
     std::vector<Square> highlightedSquares;
 
-    //Promotion UI
+    // Promotion UI
     bool awaitingPromotion = false;
     Move pendingPromotionMove;
 
-    //Rendering
+    // Menu state
+    GUIState guiState = GUIState::MENU_MODE;
+    TTF_Font *font = nullptr;
+    TTF_Font *titleFont = nullptr;
+
+    // Rendering
     void render();
     void drawBoard();
     void drawPieces();
     void drawHighlights();
     void drawPromotionDialog();
 
-    //Textures
-    bool loadPieceTextures(const std::string& assetPath);
-    std::string pieceTextureKey(const Piece& p) const;
+    // Menu rendering
+    void renderMenu();
+    void handleMenuClick(int x, int y);
+    void drawTextCentered(const std::string &text, int centerX, int centerY,
+                          SDL_Color color, TTF_Font *f);
+    bool isInsideRect(int x, int y, const SDL_Rect &rect) const;
 
-    //Coordinate conversion
+    // Textures
+    bool loadPieceTextures(const std::string &assetPath);
+    std::string pieceTextureKey(const Piece &p) const;
+
+    // Coordinate conversion
     Square pixelToSquare(int x, int y) const;
-    SDL_Rect squareToRect(const Square& sq) const;
+    SDL_Rect squareToRect(const Square &sq) const;
 
-    //Input
+    // Input
     void handleMouseClick(int x, int y);
-    void selectPiece(const Square& sq);
+    void selectPiece(const Square &sq);
     void clearSelection();
 };
 

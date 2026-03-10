@@ -24,8 +24,9 @@ target_include_directories(Chess PRIVATE ${CMAKE_SOURCE_DIR}/include)
 # GUI target (only if SDL2 found)
 find_package(SDL2 CONFIG QUIET)
 find_package(SDL2_image CONFIG QUIET)
+find_package(SDL2_ttf CONFIG QUIET)
 
-if(SDL2_FOUND AND SDL2_image_FOUND)
+if(SDL2_FOUND AND SDL2_image_FOUND AND SDL2_ttf_FOUND)
     add_executable(ChessGUI
         src/main.cpp
         src/Board.cpp
@@ -39,8 +40,9 @@ if(SDL2_FOUND AND SDL2_image_FOUND)
     target_link_libraries(ChessGUI PRIVATE
         SDL2::SDL2 SDL2::SDL2main
         $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
+        $<IF:$<TARGET_EXISTS:SDL2_ttf::SDL2_ttf>,SDL2_ttf::SDL2_ttf,SDL2_ttf::SDL2_ttf-static>
     )
-    message(STATUS "SDL2 found -- ChessGUI target enabled")
+    message(STATUS "SDL2 + SDL2_image + SDL2_ttf found -- ChessGUI target enabled")
 else()
     message(STATUS "SDL2 not found -- console-only build")
 endif()
