@@ -46,7 +46,7 @@ private:
     //Material value of a piece
     int pieceValue(PieceType type) const;
 
-    //Piece=square table bonus for positional evaluation
+    //Piece square table bonus for positional evaluation
     int positionBonus(PieceType type, Color color, int row, int col) const;
 
     int scoreMove(const Move& move, const Board& board, int depth = -1) const; //For move ordering

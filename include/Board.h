@@ -70,7 +70,7 @@ public:
     void setPiece(const Square& sq, const Piece& piece);
     void setPiece(int row, int col, const Piece& piece);
 
-    //Prrint board to console
+    //Print board to console
     void print() const;
 
     //Find king of given color

@@ -100,7 +100,7 @@ int AI::pieceValue(PieceType type) const
 
 int AI::positionBonus(PieceType type, Color color, int row, int col) const
 {
-    // For blacck, mirror the table vertically
+    // For black, mirror the table vertically
     int r = (color == Color::WHITE) ? row : (7 - row);
 
     switch (type)
