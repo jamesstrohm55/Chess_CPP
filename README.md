@@ -16,8 +16,10 @@ A fully playable chess engine with both a console interface and an SDL2 graphica
   - **Medium** — Depth 4 search (casual play)
   - **Hard** — Depth 5 search with quiescence (challenging)
 - **Graphical GUI** — SDL2-based board with click-to-move interaction, move highlighting, promotion dialog, and in-app menu
+- **Undo Move** — Take back your last move (in CPU mode, undoes both your move and the CPU's response)
 - **Live Scoreboard** — Tracks wins, losses, and draws across games in a session
 - **Status Panel** — Real-time messages: "CPU is thinking...", "CPU played e2e4. Your turn.", "Check!", "Checkmate!"
+- **Play in Browser** — WebAssembly build via Emscripten, playable directly in the browser with no install
 - **Console Interface** — Text-based game supporting both UCI (`e2e4`) and algebraic (`Nf3`, `O-O`) notation
 - **Draw Detection** — 50-move rule and insufficient material (K vs K, K+B vs K, K+N vs K)
 
@@ -69,8 +71,11 @@ Chess/
 │   ├── Game.h                # Game class with turn management and AI integration
 │   ├── AI.h                  # AI class with configurable difficulty
 │   └── GUI.h                 # SDL2 GUI class
+├── web/
+│   └── shell.html            # Custom HTML shell for Emscripten build
 └── assets/
-    └── pieces/               # 12 SVG piece sprites (wP.svg, bK.svg, etc.)
+    ├── pieces/               # 12 PNG piece sprites (wP.png, bK.png, etc.)
+    └── fonts/                # Bundled TTF fonts for web build
 ```
 
 ## Building
@@ -95,6 +100,26 @@ vcpkg install sdl2 sdl2-image sdl2-ttf --triplet=x64-windows
 mkdir build && cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
 cmake --build . --config Debug
+```
+
+### WebAssembly (play in browser via Emscripten)
+
+```bash
+# Activate Emscripten SDK
+emsdk activate latest
+emsdk_env.bat
+
+# Build
+mkdir build-web && cd build-web
+emcmake cmake .. -G Ninja
+cmake --build . -j1   # first build caches ports; subsequent builds can use -j4
+```
+
+Produces `chess.html`, `chess.js`, `chess.wasm`, and `chess.data` in `build-web/`. Serve locally:
+
+```bash
+python -m http.server 8080
+# Open http://localhost:8080/chess.html
 ```
 
 ## Running
@@ -132,6 +157,7 @@ On startup, a menu lets you choose:
 - **Click** a piece to select it and see highlighted legal destinations
 - **Click** a highlighted square to make the move
 - **Click** elsewhere to deselect
+- **Undo** button in the status panel to take back your last move
 - On **pawn promotion**, an overlay appears to choose the promoted piece
 - In CPU mode, the AI moves automatically after your turn
 - **Score** and **status messages** are displayed in the panel below the board
