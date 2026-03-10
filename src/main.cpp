@@ -17,6 +17,15 @@ int main(int argc, char *argv[])
 
     Game game;
 
+    // Show menu (works for both console and GUI)
+    GameMode selectedMode;
+    Difficulty selectedDiff;
+    Color selectedCPUColor;
+    Game::showMenu(selectedMode, selectedDiff, selectedCPUColor);
+    game.setMode(selectedMode);
+    game.setDifficulty(selectedDiff);
+    game.setCPUColor(selectedCPUColor);
+
     if (guiMode)
     {
 #ifdef HAS_GUI

@@ -17,6 +17,7 @@ add_executable(Chess
     src/Board.cpp
     src/MoveGenerator.cpp
     src/Game.cpp
+    src/AI.cpp
 )
 target_include_directories(Chess PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
@@ -31,6 +32,7 @@ if(SDL2_FOUND AND SDL2_image_FOUND)
         src/MoveGenerator.cpp
         src/Game.cpp
         src/GUI.cpp
+        src/AI.cpp
     )
     target_include_directories(ChessGUI PRIVATE ${CMAKE_SOURCE_DIR}/include)
     target_compile_definitions(ChessGUI PRIVATE HAS_GUI=1)

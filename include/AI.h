@@ -16,7 +16,7 @@ public:
     AI(Difficulty diff = Difficulty::MEDIUM);
 
     //Picks the best move for the current board state
-    Move pickBestMove(Board& board);
+    Move findBestMove(Board& board);
 
     void setDifficulty(Difficulty diff); 
 

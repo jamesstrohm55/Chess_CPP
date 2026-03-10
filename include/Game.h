@@ -1,6 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "AI.h"
 #include "Board.h"
 #include "Move.h"
 #include "MoveGenerator.h"
@@ -14,7 +15,12 @@ enum class GameResult {
     DRAW_STALEMATE,
     DRAW_50_MOVE,
     DRAW_INSUFFICIENT,
-    RESIGNED
+    RESIGNED,
+};
+
+enum class GameMode {
+    HUMAN_VS_HUMAN,
+    HUMAN_VS_CPU
 };
 
 class Game {
@@ -36,7 +42,23 @@ public:
     //Refresh legal moves list
     void updateLegalMoves();
 
+    //Set game mode (for GUI)
+    void setMode(GameMode mode);
+
+    //Set AI difficulty (for GUI)
+    void setDifficulty(Difficulty diff);
+
+    //Set which color the CPU plays (for GUI)
+    void setCPUColor(Color color);
+
+    //Called by GUI each frame - makes CPU move if it's CPU's turn
+    void handleCPUTurn();
+
+    //Show menu and get user selections (for console mode)
+    static void showMenu(GameMode& mode, Difficulty& diff, Color& cpuColor);
+
 private:
+    //Game state
     Board board;
     MoveGenerator moveGen;
     GameResult result = GameResult::IN_PROGRESS;
@@ -50,6 +72,13 @@ private:
 
     //Display
     void printStatus() const;
+
+    //AI
+    AI ai;
+    GameMode mode = GameMode::HUMAN_VS_HUMAN;
+    Color cpuColor = Color::BLACK; // Default CPU plays Black
+
+    void makeCPUMove();
 };
 
 

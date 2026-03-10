@@ -101,7 +101,7 @@ int AI::positionBonus(PieceType type, Color color, int row, int col) const {
     }
 }
 
-int AI::evaluate(const Board& board) cosnt {
+int AI::evaluate(const Board& board) const {
     int score = 0;
 
     for (int row = 0; row < 8; ++row) {
@@ -126,11 +126,11 @@ int AI::minimax(Board& board, int depth, int alpha, int beta, bool maximizing) {
         return evaluate(board);
     }
 
-    std::vector<Move> moves = moveGen.generateMoves(board);
+    std::vector<Move> moves = moveGen.generateLegalMoves(board);
 
     //Checkmate or stalemate
     if (moves.empty()) {
-        if (board.isIncheck(board.state.sideToMove)) {
+        if (board.isInCheck(board.state.sideToMove)) {
             //Checkmate - return large negative score for maximizing, positive for minimizing
             //Add depth so the AI prefers faster checkmates and slower losses
             return maximizing ? (-100000 - depth) : (100000 + depth);
@@ -164,7 +164,7 @@ int AI::minimax(Board& board, int depth, int alpha, int beta, bool maximizing) {
 }
 
 Move AI::findBestMove(Board& board) {
-    std::vector<Move> moves = moveGen.generateMoves(board);
+    std::vector<Move> moves = moveGen.generateLegalMoves(board);
     if (moves.empty()) return Move(); //No legal moves
 
     int depth = getSearchDepth();
