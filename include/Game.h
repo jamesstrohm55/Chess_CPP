@@ -42,6 +42,10 @@ public:
     //Refresh legal moves list
     void updateLegalMoves();
 
+    bool isInCheck() const;
+    void checkGameOver();
+    void resetGame();
+
     //Set game mode (for GUI)
     void setMode(GameMode mode);
 

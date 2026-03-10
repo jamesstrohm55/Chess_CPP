@@ -57,6 +57,9 @@ private:
     void drawPieces();
     void drawHighlights();
     void drawPromotionDialog();
+    void drawCheckBanner();
+    void drawGameOverOverlay();
+    void handleGameOverClick(int x, int y);
 
     // Menu rendering
     void renderMenu();

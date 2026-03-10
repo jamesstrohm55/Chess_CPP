@@ -14,6 +14,39 @@ void Game::updateLegalMoves()
     currentLegalMoves = moveGen.generateLegalMoves(board);
 }
 
+bool Game::isInCheck() const{
+    return board.isInCheck(board.state.sideToMove);
+}
+
+void Game::checkGameOver()
+{
+    if (result != GameResult::IN_PROGRESS)
+    return; // Already determined
+
+    if (moveGen.isCheckmate(board))
+    {
+        result = (board.state.sideToMove == Color::WHITE)
+                        ? GameResult::BLACK_WINS
+                        : GameResult::WHITE_WINS;
+    }
+    else if (moveGen.isStalemate(board))
+    {
+        result = GameResult::DRAW_STALEMATE;
+    }
+    else if (moveGen.isDraw(board))
+    {
+        result = GameResult::DRAW_50_MOVE;
+    }
+}
+
+void Game::resetGame()
+{
+    board.reset();
+    result = GameResult::IN_PROGRESS;
+    moveHistory.clear();
+    updateLegalMoves();
+}
+
 bool Game::tryMakeMove(const Move &move)
 {
     // Find matching move in legal moves
@@ -26,6 +59,7 @@ bool Game::tryMakeMove(const Move &move)
             board.makeMove(m);
             moveHistory.push_back(m);
             updateLegalMoves();
+            checkGameOver();
             return true;
         }
     }
@@ -459,13 +493,4 @@ void Game::handleCPUTurn() {
     if (board.state.sideToMove != cpuColor) return; // Not CPU's turn
 
     makeCPUMove();
-
-    if (moveGen.isCheckmate(board)) {
-        std::string winner = (board.state.sideToMove == Color::WHITE) ? "Black" : "White";
-        result = (board.state.sideToMove == Color::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
-    } else if (moveGen.isStalemate(board)) {
-        result = GameResult::DRAW_STALEMATE;
-    } else if (moveGen.isDraw(board)) {
-        result = GameResult::DRAW_50_MOVE;
-    }
 }
