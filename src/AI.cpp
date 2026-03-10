@@ -71,7 +71,7 @@ int AI::getSearchDepth() const
     case Difficulty::MEDIUM:
         return 4;
     case Difficulty::HARD:
-        return 6;
+        return 5;
     default:
         return 4;
     }
