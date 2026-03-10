@@ -1,0 +1,14 @@
+# ninja log v7
+161	16510	7948803520000000	CMakeFiles/Chess.dir/src/MoveGenerator.cpp.o	1da92b230116c79d
+235	16706	7948803520000000	CMakeFiles/Chess.dir/src/AI.cpp.o	2cc54fec34ccec22
+128	16740	7948803520000000	CMakeFiles/Chess.dir/src/Board.cpp.o	318c6619378e4d84
+11	16913	7948803500000000	CMakeFiles/Chess.dir/src/main.cpp.o	d2cd9a3731a4e6f
+196	16986	7948803520000000	CMakeFiles/Chess.dir/src/Game.cpp.o	b1f71f819676627f
+16991	30472	7948803680000000	Chess.html	af95f0a47ab3a59
+88	134019	7948810120000000	CMakeFiles/ChessWeb.dir/src/main.cpp.o	b0700ede97b1be13
+134028	137967	7948811460000000	CMakeFiles/ChessWeb.dir/src/Board.cpp.o	f9ff9d96cce74580
+137968	141476	7948811500000000	CMakeFiles/ChessWeb.dir/src/MoveGenerator.cpp.o	a81cf0d4afdeebcd
+141478	145169	7948811520000000	CMakeFiles/ChessWeb.dir/src/Game.cpp.o	614db1e638a2e3c2
+145176	149124	7948811560000000	CMakeFiles/ChessWeb.dir/src/GUI.cpp.o	54bde56067652501
+149131	152568	7948811600000000	CMakeFiles/ChessWeb.dir/src/AI.cpp.o	3ed7ca06e31abf73
+152570	161563	7948811640000000	chess.html	3e9d58e626c9408a
