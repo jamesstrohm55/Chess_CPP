@@ -80,6 +80,11 @@ private:
     void handleMouseClick(int x, int y);
     void selectPiece(const Square &sq);
     void clearSelection();
+
+    // Status panel
+    std::string statusMessage;
+    int panelHeight = 60;
+    void drawStatusPanel();
 };
 
 #endif // GUI_H

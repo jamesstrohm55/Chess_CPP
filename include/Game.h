@@ -61,6 +61,17 @@ public:
     //Show menu and get user selections (for console mode)
     static void showMenu(GameMode& mode, Difficulty& diff, Color& cpuColor);
 
+    //Score tracking
+    int getWhiteWins() const { return whiteWins; }
+    int getBlackWins() const { return blackWins; }
+    int getDrawCount() const { return drawCount; }
+
+    //Cpu turn helpers
+    bool isCPUTurn() const;
+    std::string getLastMoveString() const;
+    Color getCPUColor() const { return cpuColor; }
+    GameMode getMode() const {return mode; }
+
 private:
     //Game state
     Board board;
@@ -83,6 +94,12 @@ private:
     Color cpuColor = Color::BLACK; // Default CPU plays Black
 
     void makeCPUMove();
+
+    //Score tracking
+    int whiteWins = 0;
+    int blackWins = 0;
+    int drawCount = 0;
+    void updateScore();
 };
 
 

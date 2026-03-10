@@ -33,7 +33,7 @@ bool ChessGUI::init(int size)
 
     window = SDL_CreateWindow("Chess",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              windowSize, windowSize, SDL_WINDOW_SHOWN);
+                              windowSize, windowSize + panelHeight, SDL_WINDOW_SHOWN);
     if (!window)
     {
         std::cerr << "Window creation failed: " << SDL_GetError() << "\n";
@@ -154,6 +154,7 @@ void ChessGUI::render()
     drawBoard();
     drawHighlights();
     drawPieces();
+    drawStatusPanel();
 
     if (awaitingPromotion)
     {
@@ -257,6 +258,46 @@ void ChessGUI::drawHighlights()
     }
 }
 
+void ChessGUI::drawStatusPanel()
+{
+    // Panel background
+    SDL_Rect panel = {0, windowSize, windowSize, panelHeight};
+    SDL_SetRenderDrawColor(renderer, 48, 44, 40, 255);
+    SDL_RenderFillRect(renderer, &panel);
+
+    // Sparator line
+    SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+    SDL_RenderDrawLine(renderer, 0, windowSize, windowSize, windowSize);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gold = {255, 215, 0, 255};
+
+    // Score display
+    std::string scoreText;
+    if (game.getMode() == GameMode::HUMAN_VS_CPU)
+    {
+        int playerWins = (game.getCPUColor() == Color::BLACK) ? game.getWhiteWins() : game.getBlackWins();
+        int cpuWins = (game.getCPUColor() == Color::BLACK) ? game.getBlackWins() : game.getWhiteWins();
+        scoreText = "You: " + std::to_string(playerWins) +
+                    " CPU: " + std::to_string(cpuWins) +
+                    " Draws: " + std::to_string(game.getDrawCount());
+    }
+    else
+    {
+        scoreText = "White: " + std::to_string(game.getWhiteWins()) +
+                    " Black: " + std::to_string(game.getBlackWins()) +
+                    " Draws: " + std::to_string(game.getDrawCount());
+    }
+
+    drawTextCentered(scoreText, windowSize / 2, windowSize + 15, gold, font);
+
+    // Status message
+    if (!statusMessage.empty())
+    {
+        drawTextCentered(statusMessage, windowSize / 2, windowSize + 42, white, font);
+    }
+}
+
 void ChessGUI::drawPromotionDialog()
 {
     // Draw a vertical strip of 45 promotion pieces over the target column
@@ -346,6 +387,14 @@ void ChessGUI::handleMouseClick(int x, int y)
                                   PieceType::BISHOP, PieceType::KNIGHT};
             pendingPromotionMove.promotionPiece = promos[clickIdx];
             game.tryMakeMove(pendingPromotionMove);
+            const char *promoNames[] = {"Queen", "Rook", "Bishop", "Knight"};
+            std::string promoStr = promoNames[clickIdx];
+            if (game.getResult() != GameResult::IN_PROGRESS)
+                statusMessage = "You promoted to " + promoStr + ". Game Over!";
+            else if (game.isInCheck())
+                statusMessage = "You promoted to " + promoStr + ". Check!";
+            else
+                statusMessage = "You promoted to " + promoStr + ". Your turn.";
             awaitingPromotion = false;
             clearSelection();
         }
@@ -386,6 +435,12 @@ void ChessGUI::handleMouseClick(int x, int y)
 
             Move move(selectedSquare, clicked);
             game.tryMakeMove(move);
+            if (game.getResult() != GameResult::IN_PROGRESS)
+                statusMessage = "You played: " + move.toString() + ". Game Over!";
+            else if (game.isInCheck())
+                statusMessage = "You played: " + move.toString() + ". Check!";
+            else
+                statusMessage = "You played: " + move.toString() + ". CPU's turn.";
             clearSelection();
         }
         else if (!clickedPiece.isEmpty() &&
@@ -443,324 +498,348 @@ void ChessGUI::run()
                 }
             }
         }
-    
 
-            if (guiState == GUIState::PLAYING)
+        if (guiState == GUIState::PLAYING)
+        {
+            if (game.isCPUTurn())
             {
-                game.handleCPUTurn();
+                statusMessage = "CPU is thinking...";
                 render();
+                game.handleCPUTurn();
+                std::string lastMove = game.getLastMoveString();
+                if (game.getResult() != GameResult::IN_PROGRESS)
+                {
+                    if (game.getResult() == GameResult::WHITE_WINS || game.getResult() == GameResult::BLACK_WINS)
+                        statusMessage = "CPU played: " + lastMove + ". Checkmate!";
+                    else
+                        statusMessage = "CPU played: " + lastMove + ". It's a draw!";
+                }
+                else if (game.isInCheck())
+                {
+                    statusMessage = "CPU played: " + lastMove + ". Check!";
+                }
+                else if (!lastMove.empty())
+                {
+                    statusMessage = "CPU played: " + lastMove + ". Your turn.";
+                }
             }
-            else
-            {
-                renderMenu();
-            }
+            render();
+        }
+        else
+        {
+            renderMenu();
         }
     }
+}
 
-    void ChessGUI::shutdown()
+void ChessGUI::shutdown()
+{
+    for (auto &pair : pieceTextures)
     {
-        for (auto &pair : pieceTextures)
-        {
-            if (pair.second)
-                SDL_DestroyTexture(pair.second);
-        }
-        pieceTextures.clear();
+        if (pair.second)
+            SDL_DestroyTexture(pair.second);
+    }
+    pieceTextures.clear();
 
-        if (renderer)
-        {
-            SDL_DestroyRenderer(renderer);
-            renderer = nullptr;
-        }
-        if (window)
-        {
-            SDL_DestroyWindow(window);
-            window = nullptr;
-        }
-
-        if (font)
-        {
-            TTF_CloseFont(font);
-            font = nullptr;
-        }
-
-        if (titleFont)
-        {
-            TTF_CloseFont(titleFont);
-            titleFont = nullptr;
-        }
-
-        TTF_Quit();
-        IMG_Quit();
-        SDL_Quit();
+    if (renderer)
+    {
+        SDL_DestroyRenderer(renderer);
+        renderer = nullptr;
+    }
+    if (window)
+    {
+        SDL_DestroyWindow(window);
+        window = nullptr;
     }
 
-    void ChessGUI::drawTextCentered(const std::string &text, int centerX, int centerY, SDL_Color color, TTF_Font *f)
+    if (font)
     {
-        SDL_Surface *surface = TTF_RenderText_Blended(f, text.c_str(), color);
-        if (!surface)
-            return;
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_Rect rect = {centerX - surface->w / 2, centerY - surface->h / 2,
-                         surface->w, surface->h};
-        SDL_FreeSurface(surface);
-        if (texture)
-        {
-            SDL_RenderCopy(renderer, texture, nullptr, &rect);
-            SDL_DestroyTexture(texture);
-        }
+        TTF_CloseFont(font);
+        font = nullptr;
     }
 
-    bool ChessGUI::isInsideRect(int x, int y, const SDL_Rect &rect) const
+    if (titleFont)
     {
-        return x >= rect.x && x <= rect.x + rect.w &&
-               y >= rect.y && y <= rect.y + rect.h;
+        TTF_CloseFont(titleFont);
+        titleFont = nullptr;
     }
 
-    void ChessGUI::renderMenu()
+    TTF_Quit();
+    IMG_Quit();
+    SDL_Quit();
+}
+
+void ChessGUI::drawTextCentered(const std::string &text, int centerX, int centerY, SDL_Color color, TTF_Font *f)
+{
+    SDL_Surface *surface = TTF_RenderText_Blended(f, text.c_str(), color);
+    if (!surface)
+        return;
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect rect = {centerX - surface->w / 2, centerY - surface->h / 2,
+                     surface->w, surface->h};
+    SDL_FreeSurface(surface);
+    if (texture)
     {
-        SDL_SetRenderDrawColor(renderer, 48, 44, 40, 255);
-        SDL_RenderClear(renderer);
-
-        SDL_Color white = {255, 255, 255, 255};
-        SDL_Color gold = {255, 215, 0, 255};
-
-        int btnW = 300, btnH = 60;
-        int btnX = (windowSize - btnW) / 2;
-
-        switch (guiState)
-        {
-        case GUIState::MENU_MODE:
-        {
-            drawTextCentered("CHESS", windowSize / 2, 140, gold, titleFont);
-
-            SDL_Rect btn1 = {btnX, 280, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 370, btnW, btnH};
-
-            SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
-            SDL_RenderFillRect(renderer, &btn1);
-            SDL_RenderFillRect(renderer, &btn2);
-
-            SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
-            SDL_RenderDrawRect(renderer, &btn1);
-            SDL_RenderDrawRect(renderer, &btn2);
-
-            drawTextCentered("Play vs Human", windowSize / 2, btn1.y + btnH / 2, white, font);
-            drawTextCentered("Play vs Computer", windowSize / 2, btn2.y + btnH / 2, white, font);
-            break;
-        }
-        case GUIState::MENU_COLOR:
-        {
-            drawTextCentered("Play as ...", windowSize / 2, 140, gold, titleFont);
-
-            SDL_Rect btn1 = {btnX, 280, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 370, btnW, btnH};
-
-            SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
-            SDL_RenderFillRect(renderer, &btn1);
-            SDL_RenderFillRect(renderer, &btn2);
-
-            SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
-            SDL_RenderDrawRect(renderer, &btn1);
-            SDL_RenderDrawRect(renderer, &btn2);
-
-            drawTextCentered("White", windowSize / 2, btn1.y + btnH / 2, white, font);
-            drawTextCentered("Black", windowSize / 2, btn2.y + btnH / 2, white, font);
-            break;
-        }
-        case GUIState::MENU_DIFFICULTY:
-        {
-            drawTextCentered("Select Difficulty", windowSize / 2, 140, gold, titleFont);
-
-            SDL_Rect btn1 = {btnX, 240, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 330, btnW, btnH};
-            SDL_Rect btn3 = {btnX, 420, btnW, btnH};
-
-            SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
-            SDL_RenderFillRect(renderer, &btn1);
-            SDL_RenderFillRect(renderer, &btn2);
-            SDL_RenderFillRect(renderer, &btn3);
-
-            SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
-            SDL_RenderDrawRect(renderer, &btn1);
-            SDL_RenderDrawRect(renderer, &btn2);
-            SDL_RenderDrawRect(renderer, &btn3);
-
-            drawTextCentered("Easy", windowSize / 2, btn1.y + btnH / 2, white, font);
-            drawTextCentered("Medium", windowSize / 2, btn2.y + btnH / 2, white, font);
-            drawTextCentered("Hard", windowSize / 2, btn3.y + btnH / 2, white, font);
-            break;
-        }
-        default:
-            break;
-        }
-
-        SDL_RenderPresent(renderer);
+        SDL_RenderCopy(renderer, texture, nullptr, &rect);
+        SDL_DestroyTexture(texture);
     }
+}
 
-    void ChessGUI::handleMenuClick(int x, int y)
+bool ChessGUI::isInsideRect(int x, int y, const SDL_Rect &rect) const
+{
+    return x >= rect.x && x <= rect.x + rect.w &&
+           y >= rect.y && y <= rect.y + rect.h;
+}
+
+void ChessGUI::renderMenu()
+{
+    SDL_SetRenderDrawColor(renderer, 48, 44, 40, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gold = {255, 215, 0, 255};
+
+    int btnW = 300, btnH = 60;
+    int btnX = (windowSize - btnW) / 2;
+
+    switch (guiState)
     {
-        int btnW = 300, btnH = 60;
-        int btnX = (windowSize - btnW) / 2;
-
-        switch (guiState)
-        {
-        case GUIState::MENU_MODE:
-        {
-            SDL_Rect btn1 = {btnX, 280, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 370, btnW, btnH};
-
-            if (isInsideRect(x, y, btn1))
-            {
-                game.setMode(GameMode::HUMAN_VS_HUMAN);
-                guiState = GUIState::PLAYING;
-            }
-            else if (isInsideRect(x, y, btn2))
-            {
-                game.setMode(GameMode::HUMAN_VS_CPU);
-                guiState = GUIState::MENU_COLOR;
-            }
-            break;
-        }
-        case GUIState::MENU_COLOR:
-        {
-            SDL_Rect btn1 = {btnX, 280, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 370, btnW, btnH};
-
-            if (isInsideRect(x, y, btn1))
-            {
-                game.setCPUColor(Color::BLACK);
-                guiState = GUIState::MENU_DIFFICULTY;
-            }
-            else if (isInsideRect(x, y, btn2))
-            {
-                game.setCPUColor(Color::WHITE);
-                guiState = GUIState::MENU_DIFFICULTY;
-            }
-            break;
-        }
-        case GUIState::MENU_DIFFICULTY:
-        {
-            SDL_Rect btn1 = {btnX, 240, btnW, btnH};
-            SDL_Rect btn2 = {btnX, 330, btnW, btnH};
-            SDL_Rect btn3 = {btnX, 420, btnW, btnH};
-
-            if (isInsideRect(x, y, btn1))
-            {
-                game.setDifficulty(Difficulty::EASY);
-                guiState = GUIState::PLAYING;
-            }
-            else if (isInsideRect(x, y, btn2))
-            {
-                game.setDifficulty(Difficulty::MEDIUM);
-                guiState = GUIState::PLAYING;
-            }
-            else if (isInsideRect(x, y, btn3))
-            {
-                game.setDifficulty(Difficulty::HARD);
-                guiState = GUIState::PLAYING;
-            }
-            break;
-        }
-        default:
-            break;
-        }
-    }
-
-    void ChessGUI::drawCheckBanner()
+    case GUIState::MENU_MODE:
     {
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 200, 0, 0, 180);
-        SDL_Rect banner = {0, windowSize / 2 - 25, windowSize, 50};
-        SDL_RenderFillRect(renderer, &banner);
+        drawTextCentered("CHESS", windowSize / 2, 140, gold, titleFont);
 
-        SDL_Color white = {255, 255, 255, 255};
-        drawTextCentered("Check!", windowSize / 2, windowSize / 2, white, titleFont);
-    }
-
-    void ChessGUI::drawGameOverOverlay()
-    {
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
-        SDL_Rect overlay = {0, 0, windowSize, windowSize};
-        SDL_RenderFillRect(renderer, &overlay);
-
-        SDL_Color white = {255, 255, 255, 255};
-        SDL_Color gold = {255, 215, 0, 255};
-
-        std::string resultText;
-        switch (game.getResult())
-        {
-        case GameResult::WHITE_WINS:
-            resultText = "White Wins!";
-            break;
-        case GameResult::BLACK_WINS:
-            resultText = "Black Wins!";
-            break;
-        case GameResult::DRAW_STALEMATE:
-            resultText = "Stalemate! Draw!";
-            break;
-        case GameResult::DRAW_50_MOVE:
-            resultText = "50-Move Rule! Draw!";
-            break;
-        case GameResult::DRAW_INSUFFICIENT:
-            resultText = "Insufficient Material! Draw!";
-            break;
-        case GameResult::RESIGNED:
-            resultText = "Resignation!";
-            break;
-        default:
-            resultText = "Game Over!";
-            break;
-        }
-
-        drawTextCentered(resultText, windowSize / 2, 180, gold, titleFont);
-
-        int btnW = 220, btnH = 50;
-        int btnX = (windowSize - btnW) / 2;
-
-        SDL_Rect btnPlayAgain = {btnX, 300, btnW, btnH};
-        SDL_Rect btnMainMenu = {btnX, 370, btnW, btnH};
-        SDL_Rect btnQuit = {btnX, 440, btnW, btnH};
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
 
         SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
-        SDL_RenderFillRect(renderer, &btnPlayAgain);
-        SDL_RenderFillRect(renderer, &btnMainMenu);
-        SDL_RenderFillRect(renderer, &btnQuit);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
 
         SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
-        SDL_RenderDrawRect(renderer, &btnPlayAgain);
-        SDL_RenderDrawRect(renderer, &btnMainMenu);
-        SDL_RenderDrawRect(renderer, &btnQuit);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
 
-        drawTextCentered("Play Again", windowSize / 2, btnPlayAgain.y + btnH / 2, white, font);
-        drawTextCentered("Main Menu", windowSize / 2, btnMainMenu.y + btnH / 2, white, font);
-        drawTextCentered("Quit", windowSize / 2, btnQuit.y + btnH / 2, white, font);
+        drawTextCentered("Play vs Human", windowSize / 2, btn1.y + btnH / 2, white, font);
+        drawTextCentered("Play vs Computer", windowSize / 2, btn2.y + btnH / 2, white, font);
+        break;
     }
-
-    void ChessGUI::handleGameOverClick(int x, int y)
+    case GUIState::MENU_COLOR:
     {
-        int btnW = 220, btnH = 50;
-        int btnX = (windowSize - btnW) / 2;
+        drawTextCentered("Play as ...", windowSize / 2, 140, gold, titleFont);
 
-        SDL_Rect btnPlayAgain = {btnX, 300, btnW, btnH};
-        SDL_Rect btnMainMenu = {btnX, 370, btnW, btnH};
-        SDL_Rect btnQuit = {btnX, 440, btnW, btnH};
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
 
-        if (isInsideRect(x, y, btnPlayAgain))
-        {
-            game.resetGame();
-            clearSelection();
-        }
-        else if (isInsideRect(x, y, btnMainMenu))
-        {
-            game.resetGame();
-            clearSelection();
-            guiState = GUIState::MENU_MODE;
-        }
-        else if (isInsideRect(x, y, btnQuit))
-        {
-            SDL_Event quit;
-            quit.type = SDL_QUIT;
-            SDL_PushEvent(&quit);
-        }
+        SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
+
+        SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
+
+        drawTextCentered("White", windowSize / 2, btn1.y + btnH / 2, white, font);
+        drawTextCentered("Black", windowSize / 2, btn2.y + btnH / 2, white, font);
+        break;
     }
+    case GUIState::MENU_DIFFICULTY:
+    {
+        drawTextCentered("Select Difficulty", windowSize / 2, 140, gold, titleFont);
+
+        SDL_Rect btn1 = {btnX, 240, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+        SDL_Rect btn3 = {btnX, 420, btnW, btnH};
+
+        SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+        SDL_RenderFillRect(renderer, &btn1);
+        SDL_RenderFillRect(renderer, &btn2);
+        SDL_RenderFillRect(renderer, &btn3);
+
+        SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+        SDL_RenderDrawRect(renderer, &btn1);
+        SDL_RenderDrawRect(renderer, &btn2);
+        SDL_RenderDrawRect(renderer, &btn3);
+
+        drawTextCentered("Easy", windowSize / 2, btn1.y + btnH / 2, white, font);
+        drawTextCentered("Medium", windowSize / 2, btn2.y + btnH / 2, white, font);
+        drawTextCentered("Hard", windowSize / 2, btn3.y + btnH / 2, white, font);
+        break;
+    }
+    default:
+        break;
+    }
+
+    SDL_RenderPresent(renderer);
+}
+
+void ChessGUI::handleMenuClick(int x, int y)
+{
+    int btnW = 300, btnH = 60;
+    int btnX = (windowSize - btnW) / 2;
+
+    switch (guiState)
+    {
+    case GUIState::MENU_MODE:
+    {
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setMode(GameMode::HUMAN_VS_HUMAN);
+            guiState = GUIState::PLAYING;
+            statusMessage = "White's turn. Click a piece to move.";
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setMode(GameMode::HUMAN_VS_CPU);
+            guiState = GUIState::MENU_COLOR;
+        }
+        break;
+    }
+    case GUIState::MENU_COLOR:
+    {
+        SDL_Rect btn1 = {btnX, 280, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 370, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setCPUColor(Color::BLACK);
+            guiState = GUIState::MENU_DIFFICULTY;
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setCPUColor(Color::WHITE);
+            guiState = GUIState::MENU_DIFFICULTY;
+        }
+        break;
+    }
+    case GUIState::MENU_DIFFICULTY:
+    {
+        SDL_Rect btn1 = {btnX, 240, btnW, btnH};
+        SDL_Rect btn2 = {btnX, 330, btnW, btnH};
+        SDL_Rect btn3 = {btnX, 420, btnW, btnH};
+
+        if (isInsideRect(x, y, btn1))
+        {
+            game.setDifficulty(Difficulty::EASY);
+            guiState = GUIState::PLAYING;
+            statusMessage = "You are playing against an Easy CPU. White's turn.";
+        }
+        else if (isInsideRect(x, y, btn2))
+        {
+            game.setDifficulty(Difficulty::MEDIUM);
+            guiState = GUIState::PLAYING;
+            statusMessage = "You are playing against a Medium CPU. White's turn.";
+        }
+        else if (isInsideRect(x, y, btn3))
+        {
+            game.setDifficulty(Difficulty::HARD);
+            guiState = GUIState::PLAYING;
+            statusMessage = "You are playing against a Hard CPU. White's turn.";
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void ChessGUI::drawCheckBanner()
+{
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 200, 0, 0, 180);
+    SDL_Rect banner = {0, windowSize / 2 - 25, windowSize, 50};
+    SDL_RenderFillRect(renderer, &banner);
+
+    SDL_Color white = {255, 255, 255, 255};
+    drawTextCentered("Check!", windowSize / 2, windowSize / 2, white, titleFont);
+}
+
+void ChessGUI::drawGameOverOverlay()
+{
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
+    SDL_Rect overlay = {0, 0, windowSize, windowSize};
+    SDL_RenderFillRect(renderer, &overlay);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gold = {255, 215, 0, 255};
+
+    std::string resultText;
+    switch (game.getResult())
+    {
+    case GameResult::WHITE_WINS:
+        resultText = "White Wins!";
+        break;
+    case GameResult::BLACK_WINS:
+        resultText = "Black Wins!";
+        break;
+    case GameResult::DRAW_STALEMATE:
+        resultText = "Stalemate! Draw!";
+        break;
+    case GameResult::DRAW_50_MOVE:
+        resultText = "50-Move Rule! Draw!";
+        break;
+    case GameResult::DRAW_INSUFFICIENT:
+        resultText = "Insufficient Material! Draw!";
+        break;
+    case GameResult::RESIGNED:
+        resultText = "Resignation!";
+        break;
+    default:
+        resultText = "Game Over!";
+        break;
+    }
+
+    drawTextCentered(resultText, windowSize / 2, 180, gold, titleFont);
+
+    int btnW = 220, btnH = 50;
+    int btnX = (windowSize - btnW) / 2;
+
+    SDL_Rect btnPlayAgain = {btnX, 300, btnW, btnH};
+    SDL_Rect btnMainMenu = {btnX, 370, btnW, btnH};
+    SDL_Rect btnQuit = {btnX, 440, btnW, btnH};
+
+    SDL_SetRenderDrawColor(renderer, 181, 136, 99, 255);
+    SDL_RenderFillRect(renderer, &btnPlayAgain);
+    SDL_RenderFillRect(renderer, &btnMainMenu);
+    SDL_RenderFillRect(renderer, &btnQuit);
+
+    SDL_SetRenderDrawColor(renderer, 120, 80, 50, 255);
+    SDL_RenderDrawRect(renderer, &btnPlayAgain);
+    SDL_RenderDrawRect(renderer, &btnMainMenu);
+    SDL_RenderDrawRect(renderer, &btnQuit);
+
+    drawTextCentered("Play Again", windowSize / 2, btnPlayAgain.y + btnH / 2, white, font);
+    drawTextCentered("Main Menu", windowSize / 2, btnMainMenu.y + btnH / 2, white, font);
+    drawTextCentered("Quit", windowSize / 2, btnQuit.y + btnH / 2, white, font);
+}
+
+void ChessGUI::handleGameOverClick(int x, int y)
+{
+    int btnW = 220, btnH = 50;
+    int btnX = (windowSize - btnW) / 2;
+
+    SDL_Rect btnPlayAgain = {btnX, 300, btnW, btnH};
+    SDL_Rect btnMainMenu = {btnX, 370, btnW, btnH};
+    SDL_Rect btnQuit = {btnX, 440, btnW, btnH};
+
+    if (isInsideRect(x, y, btnPlayAgain))
+    {
+        game.resetGame();
+        clearSelection();
+    }
+    else if (isInsideRect(x, y, btnMainMenu))
+    {
+        game.resetGame();
+        clearSelection();
+        guiState = GUIState::MENU_MODE;
+    }
+    else if (isInsideRect(x, y, btnQuit))
+    {
+        SDL_Event quit;
+        quit.type = SDL_QUIT;
+        SDL_PushEvent(&quit);
+    }
+}

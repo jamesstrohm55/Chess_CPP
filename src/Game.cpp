@@ -37,6 +37,10 @@ void Game::checkGameOver()
     {
         result = GameResult::DRAW_50_MOVE;
     }
+
+    if (result != GameResult::IN_PROGRESS) {
+        updateScore();
+    }
 }
 
 void Game::resetGame()
@@ -444,6 +448,20 @@ void Game::makeCPUMove()
     }
 }
 
+bool Game::isCPUTurn() const {
+    if (result != GameResult::IN_PROGRESS) return false; // Game over
+    if (mode != GameMode::HUMAN_VS_CPU) return false; // Not CPU mode
+    return board.state.sideToMove == cpuColor;
+}
+
+std::string Game::getLastMoveString() const {
+    if (moveHistory.empty()) return "";
+    return moveHistory.back().toString();
+}
+
+
+
+
 void Game::showMenu(GameMode &mode, Difficulty &diff, Color &cpuColor)
 {
     std::cout << "Welcome to Chess!\n\n";
@@ -485,6 +503,12 @@ void Game::showMenu(GameMode &mode, Difficulty &diff, Color &cpuColor)
     }
 
     std::cout << "\n";
+}
+
+void Game::updateScore() {
+    if (result == GameResult::WHITE_WINS) whiteWins++;
+    else if (result == GameResult::BLACK_WINS) blackWins++;
+    else if (result != GameResult::IN_PROGRESS) drawCount++;
 }
 
 void Game::handleCPUTurn() {
