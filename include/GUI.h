@@ -85,6 +85,15 @@ private:
     void selectPiece(const Square &sq);
     void clearSelection();
 
+    // Board flip
+    bool boardFlipped = false;
+    bool flipping = false;
+    Uint32 flipStartTime = 0;
+    Uint32 flipDuration = 500;
+    float flipProgress = 0.0f; // 0 = white at bottom, 1 = black at bottom
+    void startFlip(bool toFlipped);
+    void updateFlip();
+
     // Move animation
     bool animating = false;
     Uint32 animStartTime = 0;

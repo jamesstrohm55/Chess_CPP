@@ -142,18 +142,56 @@ std::string ChessGUI::pieceTextureKey(const Piece &p) const
 Square ChessGUI::pixelToSquare(int x, int y) const
 {
     int col = x / squareSize;
-    int row = 7 - (y / squareSize); // Invert y to match chess board orientation
+    int row = 7 - (y / squareSize);
+    if (boardFlipped && !flipping)
+    {
+        col = 7 - col;
+        row = 7 - row;
+    }
     return Square(row, col);
 }
 
 SDL_Rect ChessGUI::squareToRect(const Square &sq) const
 {
     SDL_Rect rect;
-    rect.x = sq.col * squareSize;
-    rect.y = (7 - sq.row) * squareSize; // Invert y
+    int normalX = sq.col * squareSize;
+    int normalY = (7 - sq.row) * squareSize;
+    int flippedX = (7 - sq.col) * squareSize;
+    int flippedY = sq.row * squareSize;
+
+    float t = flipProgress;
+    rect.x = normalX + static_cast<int>((flippedX - normalX) * t);
+    rect.y = normalY + static_cast<int>((flippedY - normalY) * t);
     rect.w = squareSize;
     rect.h = squareSize;
     return rect;
+}
+
+void ChessGUI::startFlip(bool toFlipped)
+{
+    if (toFlipped == boardFlipped)
+        return;
+    boardFlipped = toFlipped;
+    flipping = true;
+    flipStartTime = SDL_GetTicks();
+}
+
+void ChessGUI::updateFlip()
+{
+    if (!flipping)
+        return;
+
+    Uint32 elapsed = SDL_GetTicks() - flipStartTime;
+    float t = static_cast<float>(elapsed) / flipDuration;
+    if (t >= 1.0f)
+    {
+        t = 1.0f;
+        flipping = false;
+    }
+    // Smooth ease-in-out
+    t = t * t * (3.0f - 2.0f * t);
+
+    flipProgress = boardFlipped ? t : 1.0f - t;
 }
 
 // Rendering
@@ -572,7 +610,7 @@ void ChessGUI::runOneFrame()
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_LEFT)
             {
-                if (guiState == GUIState::PLAYING && !isAnimating())
+                if (guiState == GUIState::PLAYING && !isAnimating() && !flipping)
                 {
                     // Check undo button first
                     if (game.getResult() == GameResult::IN_PROGRESS &&
@@ -597,9 +635,11 @@ void ChessGUI::runOneFrame()
         }
     }
 
+    updateFlip();
+
     if (guiState == GUIState::PLAYING)
     {
-        if (game.isCPUTurn() && !isAnimating())
+        if (game.isCPUTurn() && !isAnimating() && !flipping)
         {
             statusMessage = "CPU is thinking...";
             render();
@@ -811,6 +851,9 @@ void ChessGUI::handleMenuClick(int x, int y)
         if (isInsideRect(x, y, btn1))
         {
             game.setMode(GameMode::HUMAN_VS_HUMAN);
+            boardFlipped = false;
+            flipProgress = 0.0f;
+            flipping = false;
             guiState = GUIState::PLAYING;
             statusMessage = "White's turn. Click a piece to move.";
         }
@@ -848,18 +891,24 @@ void ChessGUI::handleMenuClick(int x, int y)
         {
             game.setDifficulty(Difficulty::EASY);
             guiState = GUIState::PLAYING;
+            if (game.getCPUColor() == Color::WHITE)
+                startFlip(true);
             statusMessage = "You are playing against an Easy CPU. White's turn.";
         }
         else if (isInsideRect(x, y, btn2))
         {
             game.setDifficulty(Difficulty::MEDIUM);
             guiState = GUIState::PLAYING;
+            if (game.getCPUColor() == Color::WHITE)
+                startFlip(true);
             statusMessage = "You are playing against a Medium CPU. White's turn.";
         }
         else if (isInsideRect(x, y, btn3))
         {
             game.setDifficulty(Difficulty::HARD);
             guiState = GUIState::PLAYING;
+            if (game.getCPUColor() == Color::WHITE)
+                startFlip(true);
             statusMessage = "You are playing against a Hard CPU. White's turn.";
         }
         break;
@@ -958,6 +1007,9 @@ void ChessGUI::handleGameOverClick(int x, int y)
     {
         game.resetGame();
         clearSelection();
+        boardFlipped = false;
+        flipProgress = 0.0f;
+        flipping = false;
         guiState = GUIState::MENU_MODE;
     }
     else if (isInsideRect(x, y, btnQuit))
