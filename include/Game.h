@@ -72,6 +72,7 @@ public:
     //Cpu turn helpers
     bool isCPUTurn() const;
     std::string getLastMoveString() const;
+    const Move* getLastMove() const;
     Color getCPUColor() const { return cpuColor; }
     GameMode getMode() const {return mode; }
 

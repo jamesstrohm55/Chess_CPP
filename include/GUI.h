@@ -85,6 +85,17 @@ private:
     void selectPiece(const Square &sq);
     void clearSelection();
 
+    // Move animation
+    bool animating = false;
+    Uint32 animStartTime = 0;
+    Uint32 animDuration = 200; // milliseconds
+    int animFromX, animFromY;
+    int animToX, animToY;
+    Square animDestSquare;
+    std::string animPieceKey;
+    void startAnimation(const Square &from, const Square &to, const std::string &pieceKey);
+    bool isAnimating() const;
+
     // Status panel
     std::string statusMessage;
     int panelHeight = 60;

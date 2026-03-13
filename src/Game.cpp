@@ -480,6 +480,11 @@ std::string Game::getLastMoveString() const {
     return moveHistory.back().toString();
 }
 
+const Move* Game::getLastMove() const {
+    if (moveHistory.empty()) return nullptr;
+    return &moveHistory.back();
+}
+
 
 
 

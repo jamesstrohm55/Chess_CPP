@@ -212,9 +212,46 @@ void ChessGUI::drawBoard()
     }
 }
 
+void ChessGUI::startAnimation(const Square &from, const Square &to, const std::string &pieceKey)
+{
+    SDL_Rect fromRect = squareToRect(from);
+    SDL_Rect toRect = squareToRect(to);
+    animFromX = fromRect.x;
+    animFromY = fromRect.y;
+    animToX = toRect.x;
+    animToY = toRect.y;
+    animDestSquare = to;
+    animPieceKey = pieceKey;
+    animStartTime = SDL_GetTicks();
+    animating = true;
+}
+
+bool ChessGUI::isAnimating() const
+{
+    return animating;
+}
+
 void ChessGUI::drawPieces()
 {
     const Board &board = game.getBoard();
+
+    // Check if animation is done
+    float t = 0.0f;
+    if (animating)
+    {
+        Uint32 elapsed = SDL_GetTicks() - animStartTime;
+        if (elapsed >= animDuration)
+        {
+            animating = false;
+        }
+        else
+        {
+            t = static_cast<float>(elapsed) / animDuration;
+            // Ease out: decelerate at the end
+            t = 1.0f - (1.0f - t) * (1.0f - t);
+        }
+    }
+
     for (int row = 0; row < 8; ++row)
     {
         for (int col = 0; col < 8; ++col)
@@ -224,11 +261,15 @@ void ChessGUI::drawPieces()
                 continue;
 
             std::string key = pieceTextureKey(p);
+
+            // Skip the piece at its destination while animating
+            if (animating && row == animDestSquare.row && col == animDestSquare.col && key == animPieceKey)
+                continue;
+
             auto it = pieceTextures.find(key);
             if (it != pieceTextures.end())
             {
                 SDL_Rect rect = squareToRect(Square(row, col));
-                // Add small padding
                 int pad = squareSize / 10;
                 rect.x += pad;
                 rect.y += pad;
@@ -236,6 +277,20 @@ void ChessGUI::drawPieces()
                 rect.h -= 2 * pad;
                 SDL_RenderCopy(renderer, it->second, nullptr, &rect);
             }
+        }
+    }
+
+    // Draw the animating piece at its interpolated position
+    if (animating)
+    {
+        auto it = pieceTextures.find(animPieceKey);
+        if (it != pieceTextures.end())
+        {
+            int curX = animFromX + static_cast<int>((animToX - animFromX) * t);
+            int curY = animFromY + static_cast<int>((animToY - animFromY) * t);
+            int pad = squareSize / 10;
+            SDL_Rect rect = {curX + pad, curY + pad, squareSize - 2 * pad, squareSize - 2 * pad};
+            SDL_RenderCopy(renderer, it->second, nullptr, &rect);
         }
     }
 }
@@ -409,7 +464,9 @@ void ChessGUI::handleMouseClick(int x, int y)
             PieceType promos[] = {PieceType::QUEEN, PieceType::ROOK,
                                   PieceType::BISHOP, PieceType::KNIGHT};
             pendingPromotionMove.promotionPiece = promos[clickIdx];
+            Piece promoPiece(promos[clickIdx], promoColor);
             game.tryMakeMove(pendingPromotionMove);
+            startAnimation(pendingPromotionMove.from, pendingPromotionMove.to, pieceTextureKey(promoPiece));
             const char *promoNames[] = {"Queen", "Rook", "Bishop", "Knight"};
             std::string promoStr = promoNames[clickIdx];
             if (game.getResult() != GameResult::IN_PROGRESS)
@@ -457,7 +514,9 @@ void ChessGUI::handleMouseClick(int x, int y)
             }
 
             Move move(selectedSquare, clicked);
+            std::string pieceKey = pieceTextureKey(board.getPiece(selectedSquare));
             game.tryMakeMove(move);
+            startAnimation(selectedSquare, clicked, pieceKey);
             if (game.getResult() != GameResult::IN_PROGRESS)
                 statusMessage = "You played: " + move.toString() + ". Game Over!";
             else if (game.isInCheck())
@@ -513,7 +572,7 @@ void ChessGUI::runOneFrame()
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_LEFT)
             {
-                if (guiState == GUIState::PLAYING)
+                if (guiState == GUIState::PLAYING && !isAnimating())
                 {
                     // Check undo button first
                     if (game.getResult() == GameResult::IN_PROGRESS &&
@@ -540,11 +599,18 @@ void ChessGUI::runOneFrame()
 
     if (guiState == GUIState::PLAYING)
     {
-        if (game.isCPUTurn())
+        if (game.isCPUTurn() && !isAnimating())
         {
             statusMessage = "CPU is thinking...";
             render();
             game.handleCPUTurn();
+            // Start animation for CPU move
+            const Move *cpuMove = game.getLastMove();
+            if (cpuMove)
+            {
+                Piece movedPiece = game.getBoard().getPiece(cpuMove->to);
+                startAnimation(cpuMove->from, cpuMove->to, pieceTextureKey(movedPiece));
+            }
             std::string lastMove = game.getLastMoveString();
             if (game.getResult() != GameResult::IN_PROGRESS)
             {
