@@ -225,14 +225,23 @@ void Board :: makeMove(Move& move) {
         }
     }
 
-    //Rook move or is captured - revoke relevant side
-    if (move.from == Square(0, 0) || move.to == Square(0, 0))
+    //Rook moves from starting square - revoke that side
+    if (move.from == Square(0, 0) && movingPiece.type == PieceType::ROOK)
         state.whiteCanCastleQueensside = false;
-    if (move.from == Square(0, 7) || move.to == Square(0, 7))
+    if (move.from == Square(0, 7) && movingPiece.type == PieceType::ROOK)
         state.whiteCanCastleKingsside = false;
-    if (move.from == Square(7, 0) || move.to == Square(7, 0))
+    if (move.from == Square(7, 0) && movingPiece.type == PieceType::ROOK)
         state.blackCanCastleQueensside = false;
-    if (move.from == Square(7, 7) || move.to == Square(7, 7))
+    if (move.from == Square(7, 7) && movingPiece.type == PieceType::ROOK)
+        state.blackCanCastleKingsside = false;
+    //Rook captured on starting square - revoke that side
+    if (move.to == Square(0, 0) && move.capturedPiece.type == PieceType::ROOK)
+        state.whiteCanCastleQueensside = false;
+    if (move.to == Square(0, 7) && move.capturedPiece.type == PieceType::ROOK)
+        state.whiteCanCastleKingsside = false;
+    if (move.to == Square(7, 0) && move.capturedPiece.type == PieceType::ROOK)
+        state.blackCanCastleQueensside = false;
+    if (move.to == Square(7, 7) && move.capturedPiece.type == PieceType::ROOK)
         state.blackCanCastleKingsside = false;
 
     //Update en passant target

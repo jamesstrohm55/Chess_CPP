@@ -645,7 +645,7 @@ void ChessGUI::runOneFrame()
             render();
             game.handleCPUTurn();
             // Start animation for CPU move
-            const Move *cpuMove = game.getLastMove();
+            auto cpuMove = game.getLastMove();
             if (cpuMove)
             {
                 Piece movedPiece = game.getBoard().getPiece(cpuMove->to);

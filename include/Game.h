@@ -5,6 +5,7 @@
 #include "Board.h"
 #include "Move.h"
 #include "MoveGenerator.h"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -72,7 +73,7 @@ public:
     //Cpu turn helpers
     bool isCPUTurn() const;
     std::string getLastMoveString() const;
-    const Move* getLastMove() const;
+    std::optional<Move> getLastMove() const;
     Color getCPUColor() const { return cpuColor; }
     GameMode getMode() const {return mode; }
 
@@ -91,6 +92,7 @@ private:
 
     //Display
     void printStatus() const;
+    void printGameResult() const;
 
     //AI
     AI ai;

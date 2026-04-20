@@ -55,7 +55,7 @@ static const int KING_TABLE[8][8] = {
     {-30, -40, -40, -50, -50, -40, -40, -30},
     {-30, -40, -40, -50, -50, -40, -40, -30}};
 
-AI::AI(Difficulty diff) : difficulty(diff) {}
+AI::AI(Difficulty diff) : difficulty(diff) { clearKillerMoves(); }
 
 void AI::setDifficulty(Difficulty diff)
 {

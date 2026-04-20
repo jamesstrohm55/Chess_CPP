@@ -91,6 +91,22 @@ bool Game::tryMakeMove(const Move &move)
     return false; // Not found in legal moves
 }
 
+void Game::printGameResult() const
+{
+    if (result == GameResult::IN_PROGRESS) return;
+    board.print();
+    if (result == GameResult::WHITE_WINS)
+        std::cout << "Checkmate! White wins.\n";
+    else if (result == GameResult::BLACK_WINS)
+        std::cout << "Checkmate! Black wins.\n";
+    else if (result == GameResult::DRAW_STALEMATE)
+        std::cout << "Stalemate! It's a draw.\n";
+    else if (result == GameResult::DRAW_50_MOVE)
+        std::cout << "Draw by 50-move rule.\n";
+    else if (result == GameResult::DRAW_INSUFFICIENT)
+        std::cout << "Draw by insufficient material.\n";
+}
+
 void Game::printStatus() const
 {
     std::string side = (board.state.sideToMove == Color::WHITE) ? "White" : "Black";
@@ -120,27 +136,7 @@ void Game::run()
             board.state.sideToMove == cpuColor)
         {
             makeCPUMove();
-
-            // Check game-ending conditions after CPU move
-            if (moveGen.isCheckmate(board))
-            {
-                board.print();
-                std::string winner = (board.state.sideToMove == Color::WHITE) ? "Black" : "White";
-                std::cout << "Checkmate! " << winner << " wins.\n";
-                result = (board.state.sideToMove == Color::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
-            }
-            else if (moveGen.isStalemate(board))
-            {
-                board.print();
-                std::cout << "Stalemate! It's a draw.\n";
-                result = GameResult::DRAW_STALEMATE;
-            }
-            else if (moveGen.isDraw(board))
-            {
-                board.print();
-                std::cout << "Draw!\n";
-                result = GameResult::DRAW_50_MOVE;
-            }
+            printGameResult();
             continue;
         }
 
@@ -223,26 +219,7 @@ void Game::run()
             continue;
         }
 
-        // Check game-ending conditions
-        if (moveGen.isCheckmate(board))
-        {
-            board.print();
-            std::string winner = (board.state.sideToMove == Color::WHITE) ? "Black" : "White";
-            std::cout << "Checkmate! " << winner << " wins.\n";
-            result = (board.state.sideToMove == Color::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
-        }
-        else if (moveGen.isStalemate(board))
-        {
-            board.print();
-            std::cout << "Stalemate! It's a draw.\n";
-            result = GameResult::DRAW_STALEMATE;
-        }
-        else if (moveGen.isDraw(board))
-        {
-            board.print();
-            std::cout << "Draw!\n";
-            result = GameResult::DRAW_50_MOVE;
-        }
+        printGameResult();
     }
 }
 
@@ -304,143 +281,106 @@ Move Game::parseUCI(const std::string &input) const
     return Move(); // Not found in legal moves
 }
 
+static void stripAnnotations(std::string &s)
+{
+    while (!s.empty() && (s.back() == '+' || s.back() == '#' ||
+                          s.back() == '!' || s.back() == '?'))
+        s.pop_back();
+}
+
+static PieceType parsePiecePrefix(const std::string &s, int &outIdx)
+{
+    outIdx = 0;
+    if (s.empty() || !std::isupper(s[0])) return PieceType::PAWN;
+    switch (s[0])
+    {
+    case 'N': outIdx = 1; return PieceType::KNIGHT;
+    case 'B': outIdx = 1; return PieceType::BISHOP;
+    case 'R': outIdx = 1; return PieceType::ROOK;
+    case 'Q': outIdx = 1; return PieceType::QUEEN;
+    case 'K': outIdx = 1; return PieceType::KING;
+    default:  return PieceType::NONE; // uppercase but not a piece letter
+    }
+}
+
+static PieceType parsePromotionSuffix(std::string &s)
+{
+    if (s.length() < 2 || s[s.length() - 2] != '=') return PieceType::NONE;
+    PieceType promo = PieceType::NONE;
+    switch (s.back())
+    {
+    case 'Q': promo = PieceType::QUEEN;  break;
+    case 'R': promo = PieceType::ROOK;   break;
+    case 'B': promo = PieceType::BISHOP; break;
+    case 'N': promo = PieceType::KNIGHT; break;
+    default:  return PieceType::NONE;
+    }
+    s = s.substr(0, s.length() - 2);
+    return promo;
+}
+
+static void parseDisambig(const std::string &disambig, int &file, int &rank)
+{
+    file = -1;
+    rank = -1;
+    for (char c : disambig)
+    {
+        if (c >= 'a' && c <= 'h') file = c - 'a';
+        else if (c >= '1' && c <= '8') rank = c - '1';
+    }
+}
+
 Move Game::parseAlgebraic(const std::string &input) const
 {
     std::string s = input;
-
-    // Strip check/checkmate indicators
-    while (!s.empty() && (s.back() == '+' || s.back() == '#' ||
-                          s.back() == '!' || s.back() == '?'))
-    {
-        s.pop_back();
-    }
-    if (s.empty())
-        return Move();
+    stripAnnotations(s);
+    if (s.empty()) return Move();
 
     // Castling
     if (s == "O-O" || s == "0-0")
     {
         for (auto &legal : currentLegalMoves)
-        {
-            if (legal.isCastling && legal.to.col == 6)
-            { // Kingside
-                return legal;
-            }
-        }
+            if (legal.isCastling && legal.to.col == 6) return legal;
         return Move();
     }
-
-    if (s == "0-0-0" || s == "O-O-O")
+    if (s == "O-O-O" || s == "0-0-0")
     {
         for (auto &legal : currentLegalMoves)
-        {
-            if (legal.isCastling && legal.to.col == 2)
-            { // Queenside
-                return legal;
-            }
-        }
+            if (legal.isCastling && legal.to.col == 2) return legal;
         return Move();
     }
 
-    // Determine piece type
-    PieceType type = PieceType::PAWN; // Default to pawn
+    // Piece prefix (N/B/R/Q/K) or pawn
     int startIdx = 0;
-    if (!s.empty() && std::isupper(s[0]) && s[0] != '0')
-    {
-        switch (s[0])
-        {
-        case 'N':
-            type = PieceType::KNIGHT;
-            break;
-        case 'B':
-            type = PieceType::BISHOP;
-            break;
-        case 'R':
-            type = PieceType::ROOK;
-            break;
-        case 'Q':
-            type = PieceType::QUEEN;
-            break;
-        case 'K':
-            type = PieceType::KING;
-            break;
-        default:
-            return Move(); // Invalid piece
-        }
-        startIdx = 1;
-    }
+    PieceType type = parsePiecePrefix(s, startIdx);
+    if (type == PieceType::NONE) return Move(); // Uppercase but unknown letter
 
-    // Parse promotion piece if present (e.g., e8=Q)
-    PieceType promo = PieceType::NONE;
-    if (s.length() >= 2 && s[s.length() - 2] == '=')
-    {
-        char pc = s.back();
-        switch (pc)
-        {
-        case 'Q':
-            promo = PieceType::QUEEN;
-            break;
-        case 'R':
-            promo = PieceType::ROOK;
-            break;
-        case 'B':
-            promo = PieceType::BISHOP;
-            break;
-        case 'N':
-            promo = PieceType::KNIGHT;
-            break;
-        default:
-            return Move(); // Invalid promotion piece
-        }
-        s = s.substr(0, s.length() - 2); // Remove promotion part
-    }
+    // Promotion suffix (=Q etc.)
+    PieceType promo = parsePromotionSuffix(s);
 
-    // Remove x for captures
+    // Strip captures and piece prefix, leaving only destination + disambiguation
     std::string clean;
     for (char c : s.substr(startIdx))
-    {
-        if (c != 'x')
-            clean += c;
-    }
+        if (c != 'x') clean += c;
 
-    // The last two chars should be the destination square
-    if (clean.length() < 2)
-        return Move();
-    std::string desStr = clean.substr(clean.length() - 2);
-    Square dest = Square::fromAlgebraic(desStr);
-    if (!dest.isValid())
-        return Move();
+    if (clean.length() < 2) return Move();
+    Square dest = Square::fromAlgebraic(clean.substr(clean.length() - 2));
+    if (!dest.isValid()) return Move();
 
-    // Disambiguation: anything before the destination square is either the piece type (already parsed) or disambiguation
-    std::string disambig = clean.substr(0, clean.length() - 2);
-    int disambigFile = -1; // 0-7 for a-h, -1 if not specified
-    int disambigRank = -1; // 0-7 for 1-8, -1 if not specified
-    for (char c : disambig)
-    {
-        if (c >= 'a' && c <= 'h')
-            disambigFile = c - 'a';
-        else if (c >= '1' && c <= '8')
-            disambigRank = c - '1';
-    }
+    int disambigFile, disambigRank;
+    parseDisambig(clean.substr(0, clean.length() - 2), disambigFile, disambigRank);
 
     // Match against legal moves
     for (auto &legal : currentLegalMoves)
     {
-        Piece p = board.getPiece(legal.from);
-        if (p.type != type)
-            continue; // Wrong piece type
-        if (legal.to != dest)
-            continue; // Wrong destination
-        if (legal.promotionPiece != promo)
-            continue; // Wrong promotion
-        if (disambigFile >= 0 && legal.from.col != disambigFile)
-            continue; // File disambiguation doesn't match
-        if (disambigRank >= 0 && legal.from.row != disambigRank)
-            continue; // Rank disambiguation doesn't match
-        return legal; // Found a matching legal move
+        if (board.getPiece(legal.from).type != type) continue;
+        if (legal.to != dest) continue;
+        if (legal.promotionPiece != promo) continue;
+        if (disambigFile >= 0 && legal.from.col != disambigFile) continue;
+        if (disambigRank >= 0 && legal.from.row != disambigRank) continue;
+        return legal;
     }
-
-    return Move(); // No matching legal move found
+    return Move();
 }
 
 void Game::setMode(GameMode m)
@@ -480,9 +420,9 @@ std::string Game::getLastMoveString() const {
     return moveHistory.back().toString();
 }
 
-const Move* Game::getLastMove() const {
-    if (moveHistory.empty()) return nullptr;
-    return &moveHistory.back();
+std::optional<Move> Game::getLastMove() const {
+    if (moveHistory.empty()) return std::nullopt;
+    return moveHistory.back();
 }
 
 
